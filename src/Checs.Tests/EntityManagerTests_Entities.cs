@@ -9,7 +9,7 @@ namespace Checs.Tests
 		[Fact]
 		public void EntitiesAreUnique()
 		{
-			EntityManager manager = new EntityManager();
+			using EntityManager manager = new EntityManager();
 
 			var entities = manager.CreateEntity(100);
 			var distinct = new HashSet<Entity>(entities.ToArray());

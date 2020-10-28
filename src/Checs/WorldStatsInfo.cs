@@ -22,13 +22,17 @@ namespace Checs
 
 		public WorldStatsInfo(World world)
 		{
-			this.globalAllocatedChunks = ChunkPool.rentedCount + ChunkPool.count;
-			this.globalPooledChunks = ChunkPool.count;
-			this.archetypes = world.entityManager.archetypeStore.count;
-			this.archetypeCapacity = world.entityManager.archetypeStore.capacity;
-			this.entities = world.entityManager.entityStore.count;
-			this.entityCapacity = world.entityManager.entityStore.capacity;
-			this.freeEntitySlots = world.entityManager.entityStore.freeSlots.count;		}
+			unsafe
+			{
+				this.globalAllocatedChunks = ChunkPool.rentedCount + ChunkPool.count;
+				this.globalPooledChunks = ChunkPool.count;
+				this.archetypes = world.entityManager.archetypeStore->count;
+				this.archetypeCapacity = world.entityManager.archetypeStore->capacity;
+				this.entities = world.entityManager.entityStore->count;
+				this.entityCapacity = world.entityManager.entityStore->capacity;
+				this.freeEntitySlots = world.entityManager.entityStore->freeSlots.count;
+			}
+		}
 
 		public string MakeHumanReadable() =>
 			"-- Global"

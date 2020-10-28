@@ -53,20 +53,20 @@ namespace Checs
 			for(int i = 0; i < componentTypes.Length; ++i)
 				hashCode = HashCode.Combine(hashCode, componentTypes[i]);
 			
-			if(this.archetypeStore.typeLookup.TryGet(hashCode, out EntityArchetype entityArchetype))
+			if(this.archetypeStore->typeLookup.TryGet(hashCode, out EntityArchetype entityArchetype))
 				return entityArchetype;
 
-			this.archetypeStore.EnsureCapacity();
+			this.archetypeStore->EnsureCapacity();
 				
 			int chunkCapacity = ChunkUtility.CalculateChunkBufferCapacity(absoluteBlockSize);
 
 			if(chunkCapacity == 0)
 				throw new ArchetypeTooLargeException(absoluteBlockSize);
 
-			int index = this.archetypeStore.count++;
+			int index = this.archetypeStore->count++;
 
 			Archetype archetype = new Archetype();
-			archetype.chunkArray = ArchetypeChunkArray.Allocate(&this.archetypeStore.archetypes[index]);
+			archetype.chunkArray = ArchetypeChunkArray.Allocate(&this.archetypeStore->archetypes[index]);
 			archetype.chunkCapacity = chunkCapacity;
 			archetype.entityCount = 0;
 
@@ -74,23 +74,23 @@ namespace Checs
 
 			entityArchetype = new EntityArchetype(index);
 
-			this.archetypeStore.archetypes[index] = archetype;
-			this.archetypeStore.typeLookup.Add(archetype.componentHashCode, entityArchetype);
+			this.archetypeStore->archetypes[index] = archetype;
+			this.archetypeStore->typeLookup.Add(archetype.componentHashCode, entityArchetype);
 
 			return entityArchetype;
 		}
 
 		internal EntityArchetype CreateArchetypeInternal(Archetype* archetype) =>
-			 this.archetypeStore.typeLookup.Get(archetype->componentHashCode);
+			 this.archetypeStore->typeLookup.Get(archetype->componentHashCode);
 
 		public EntityArchetype GetArchetype(Entity entity) =>
 			CreateArchetypeInternal(GetArchetypeInternal(entity));
 		
 		internal Archetype* GetArchetypeInternal(Entity entity) =>
-			this.entityStore.GetChunk(entity)->archetype;
+			this.entityStore->GetChunk(entity)->archetype;
 
 		internal Archetype* GetArchetypeInternal(EntityArchetype archetype) =>
-			&this.archetypeStore.archetypes[archetype.index];
+			&this.archetypeStore->archetypes[archetype.index];
 
 		internal EntityArchetype AddTypeToArchetype<T>(Archetype* archetype) where T : unmanaged
 		{

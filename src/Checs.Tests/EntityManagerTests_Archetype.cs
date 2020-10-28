@@ -9,7 +9,7 @@ namespace Checs.Tests
 		[Fact]
 		public void ArchetypesAreEqual()
 		{
-			EntityManager manager = new EntityManager();
+			using EntityManager manager = new EntityManager();
 
 			var left = manager.CreateArchetype();
 			var right = manager.CreateArchetype();
@@ -35,7 +35,7 @@ namespace Checs.Tests
 		[Fact]
 		public void ArchetypesAreNotEqual()
 		{
-			EntityManager manager = new EntityManager();
+			using EntityManager manager = new EntityManager();
 
 			var left = manager.CreateArchetype();
 			var right = manager.CreateArchetype(typeof(Position));

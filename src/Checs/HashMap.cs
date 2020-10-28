@@ -1,7 +1,9 @@
 using System;
+using System.Runtime.InteropServices;
 
 namespace Checs
 {
+	[StructLayout(LayoutKind.Sequential)]
 	internal unsafe struct HashMap<T> : IDisposable where T : unmanaged
 	{
 		private const int DefaultCapacity = 16;

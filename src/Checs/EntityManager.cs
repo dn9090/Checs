@@ -6,18 +6,16 @@ namespace Checs
 {
 	public unsafe partial class EntityManager : IDisposable
 	{
-		internal ArchetypeStore archetypeStore;
+		internal ArchetypeStore* archetypeStore;
 
-		internal EntityStore entityStore;
+		internal EntityStore* entityStore;
 
-		internal EntityQueryCache queryCache;
+		internal EntityQueryCache* queryCache;
 
 		internal EntityManager()
 		{
-			this.archetypeStore = ArchetypeStore.Empty();
-			this.entityStore = EntityStore.Empty();
-			this.queryCache = EntityQueryCache.Empty();
-
+			Construct();
+			
 			// Create the empty archetype to avoid that the index
 			// of the default EntityArchetype is out of range.  
 			CreateArchetype();
@@ -25,19 +23,27 @@ namespace Checs
 
 		private void Construct()
 		{
-			void* ptr = MemoryUtility.Malloc(
+			byte* ptr = MemoryUtility.Malloc<byte>(
 				sizeof(ArchetypeStore) +
 				sizeof(EntityStore) +
 				sizeof(EntityQueryCache));
 
-			ArchetypeStore.Construct(ptr);
-			// TODO: ...
+			this.archetypeStore = (ArchetypeStore*)ptr;
+			this.entityStore = (EntityStore*)(ptr += sizeof(ArchetypeStore));
+			this.queryCache = (EntityQueryCache*)(ptr += sizeof(EntityStore));
+		
+			ArchetypeStore.Construct(this.archetypeStore);
+			EntityStore.Construct(this.entityStore);
+			EntityQueryCache.Construct(this.queryCache);
 		}
 
 		public void Dispose()
 		{
-			this.archetypeStore.Dispose();
-			// TODO: Dispose ...
+			this.archetypeStore->Dispose();
+			this.entityStore->Dispose();
+			this.queryCache->Dispose();
+		
+			MemoryUtility.Free(this.archetypeStore);
 		}
 	}
 }

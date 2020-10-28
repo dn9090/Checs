@@ -32,7 +32,7 @@ namespace Checs
 			for(int i = 0; i < includeTypes.Length; ++i)
 				hashCode = HashCode.Combine(hashCode, includeTypes[i]);
 
-			if(this.queryCache.typeLookup.TryGet(hashCode, out EntityQuery query))
+			if(this.queryCache->typeLookup.TryGet(hashCode, out EntityQuery query))
 				return query;
 
 			EntityQueryData queryData = new EntityQueryData();
@@ -43,19 +43,19 @@ namespace Checs
 
 			MatchArchetypesToQueryData(&queryData);
 
-			int index = this.queryCache.count;
+			int index = this.queryCache->count++;
 
 			query = new EntityQuery(index);
 
-			this.queryCache.queries[index] = queryData;
-			this.queryCache.typeLookup.Add(hashCode, query);
+			this.queryCache->queries[index] = queryData;
+			this.queryCache->typeLookup.Add(hashCode, query);
 
 			return default;
 		}
 
 		internal EntityQueryData* GetUpdatedQueryData(EntityQuery query)
 		{
-			var queryData = &this.queryCache.queries[query.index];
+			var queryData = &this.queryCache->queries[query.index];
 			MatchArchetypesToQueryData(queryData);
 			return queryData;
 		}
@@ -64,10 +64,10 @@ namespace Checs
 		{
 			// TODO: Add SIMD intrinsics and rework the matching process.
 
-			var count = this.archetypeStore.count;
-			var archetypes = this.archetypeStore.archetypes;
+			var count = this.archetypeStore->count;
+			var archetypes = this.archetypeStore->archetypes;
 			var componentTypes = new Span<int>(queryData->componentTypes, queryData->componentCount);
-			var uncheckedArchetypes = this.archetypeStore.count - queryData->matchedArchetypeCount;
+			var uncheckedArchetypes = this.archetypeStore->count - queryData->matchedArchetypeCount;
 			var skipArchetypes = queryData->matchedArchetypeCount;
 
 			// Update the query data to the current archetype count. This only

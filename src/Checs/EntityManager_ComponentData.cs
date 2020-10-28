@@ -47,7 +47,7 @@ namespace Checs
 		public bool TryGetComponentData<T>(Entity entity, out T value) where T : unmanaged
 		{
 			int typeIndex = TypeRegistry<T>.typeIndex;
-			var entityInChunk = this.entityStore.entitiesInChunk[entity.index];
+			var entityInChunk = this.entityStore->entitiesInChunk[entity.index];
 			return ChunkUtility.TryGetComponentData(entityInChunk.chunk, entityInChunk.index, typeIndex, out value);
 		}
 
@@ -56,7 +56,7 @@ namespace Checs
 		public bool SetComponentData<T>(Entity entity, T value) where T : unmanaged
 		{
 			int typeIndex = TypeRegistry<T>.typeIndex;
-			var entityInChunk = this.entityStore.entitiesInChunk[entity.index];
+			var entityInChunk = this.entityStore->entitiesInChunk[entity.index];
 			return ChunkUtility.SetComponentData<T>(entityInChunk.chunk, entityInChunk.index, typeIndex, value);
 		}
 
@@ -67,7 +67,7 @@ namespace Checs
 			Archetype* dest = GetArchetypeInternal(archetype);
 
 			if(source != dest)
-				this.entityStore.MoveEntityToArchetype(entity, dest);
+				this.entityStore->MoveEntityToArchetype(entity, dest);
 		}
 
 		public void DestroyComponentData<T>(Entity entity) where T : unmanaged
@@ -77,7 +77,7 @@ namespace Checs
 			Archetype* dest = GetArchetypeInternal(archetype);
 
 			if(source != dest)
-				this.entityStore.MoveEntityToArchetype(entity, dest);
+				this.entityStore->MoveEntityToArchetype(entity, dest);
 		}
 
 		// int CopyComponentData<T>(ref Span<T> values)

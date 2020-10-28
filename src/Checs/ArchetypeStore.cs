@@ -5,6 +5,7 @@ using System.Threading;
 
 namespace Checs
 {
+	[StructLayout(LayoutKind.Sequential)]
 	internal unsafe struct ArchetypeStore : IDisposable
 	{
 		public int count;
@@ -25,8 +26,6 @@ namespace Checs
 
 			return store;
 		}
-
-		public static void Construct(void* ptr) => Construct((Archetype*)ptr);
 
 		public static void Construct(ArchetypeStore* store)
 		{
@@ -58,8 +57,9 @@ namespace Checs
 		public void Dispose()
 		{
 			this.count = 0;
+			this.capacity = 0;
 			this.typeLookup.Dispose();
-			this.archetypes = null;
+			MemoryUtility.Free<Archetype>(this.archetypes);
 		}
 	}
 }

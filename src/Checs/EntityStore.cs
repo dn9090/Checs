@@ -4,7 +4,8 @@ using System.Runtime.InteropServices;
 
 namespace Checs
 {
-	internal unsafe struct EntityStore
+	[StructLayout(LayoutKind.Sequential)]
+	internal unsafe struct EntityStore : IDisposable
 	{
 		private const int DefaultCapacity = 64;
 
@@ -39,6 +40,7 @@ namespace Checs
 			store->count = 0;
 			store->entitiesInChunk = MemoryUtility.Malloc<EntityInChunk>(store->capacity);
 			store->entityVersions = MemoryUtility.Malloc<int>(store->capacity);
+			store->freeSlots = FreeEntitySlotList.Empty();
 		}
 
 		public void EnsureCapacity(int count)
@@ -153,6 +155,15 @@ namespace Checs
 			ChunkUtility.PatchEntityData(entityBatchInChunk.chunk, entityBatchInChunk.index, entityBatchInChunk.count);
 
 			++this.version;
+		}
+
+		public void Dispose()
+		{
+			this.count = 0;
+			this.capacity = 0;
+			this.freeSlots.Dispose();
+			MemoryUtility.Free<EntityInChunk>(this.entitiesInChunk);
+			MemoryUtility.Free<int>(this.entityVersions);
 		}
 	}
 }

@@ -9,7 +9,7 @@ namespace Checs.Tests
 		[Fact]
 		public void ForEachBatchesAllEntitesInArchetype()
 		{
-			EntityManager manager = new EntityManager();
+			using EntityManager manager = new EntityManager();
 
 			var archetype = manager.CreateArchetype(new Type[] { typeof(Position), typeof(EulerAngles) });
 			var entities = manager.CreateEntity(archetype, 1000);

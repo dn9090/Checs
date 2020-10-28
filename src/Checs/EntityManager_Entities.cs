@@ -16,10 +16,10 @@ namespace Checs
 
 		internal ReadOnlySpan<Entity> CreateEntityInternal(Archetype* archetype, int count)
 		{
-			this.entityStore.EnsureCapacity(count);
+			this.entityStore->EnsureCapacity(count);
 			
 			Span<Entity> entities = new Entity[count];
-			this.entityStore.ReserveEntityBatch(entities);
+			this.entityStore->ReserveEntityBatch(entities);
 
 			int allocatedEntityCount = 0;
 			int chunkIndexInArray = 0;
@@ -35,7 +35,7 @@ namespace Checs
 				{
 					Entity entity = entities[allocatedEntityCount++];
 					entitiesInChunk[i] = entity;
-					this.entityStore.UpdateEntityInChunk(entity, chunk, chunkCount + i);
+					this.entityStore->UpdateEntityInChunk(entity, chunk, chunkCount + i);
 				}
 			}
 						
@@ -54,7 +54,7 @@ namespace Checs
 
 			while(index < entities.Length)
 			{
-				var entityBatchInChunk = this.entityStore.GetFirstEntityBatchInChunk(entities.Slice(index));
+				var entityBatchInChunk = this.entityStore->GetFirstEntityBatchInChunk(entities.Slice(index));
 				Chunk* batchChunk = entityBatchInChunk.chunk;
 				int batchCount = entityBatchInChunk.count;
 
@@ -64,12 +64,12 @@ namespace Checs
 					continue;
 				}
 
-				this.entityStore.DestroyEntityBatchInChunk(entityBatchInChunk);
+				this.entityStore->DestroyEntityBatchInChunk(entityBatchInChunk);
 				index += batchCount;
 			}
 		}
 
-		public bool IsAlive(Entity entity) => this.entityStore.Exists(entity);
+		public bool IsAlive(Entity entity) => this.entityStore->Exists(entity);
 	
 		// TODO: Batched archetype change.
 
@@ -77,8 +77,8 @@ namespace Checs
 		{
 			Archetype* ptr = GetArchetypeInternal(archetype);
 
-			if(ptr != this.entityStore.GetArchetype(entity))
-				this.entityStore.MoveEntityToArchetype(entity, ptr);
+			if(ptr != this.entityStore->GetArchetype(entity))
+				this.entityStore->MoveEntityToArchetype(entity, ptr);
 		}
 
 		public ReadOnlySpan<Entity> GetEntities(EntityArchetype archetype)

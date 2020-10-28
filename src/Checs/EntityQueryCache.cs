@@ -4,7 +4,8 @@ using System.Runtime.InteropServices;
 
 namespace Checs
 {
-	internal unsafe struct EntityQueryCache // : IDisposable
+	[StructLayout(LayoutKind.Sequential)]
+	internal unsafe struct EntityQueryCache : IDisposable
 	{
 		public int count;
 
@@ -40,6 +41,14 @@ namespace Checs
 				this.capacity = this.capacity * 2;
 				this.queries = MemoryUtility.Realloc(queries, this.capacity);
 			}
+		}
+
+		public void Dispose()
+		{
+			this.count = 0;
+			this.capacity = 0;
+			this.typeLookup.Dispose();
+			MemoryUtility.Free<EntityQueryData>(this.queries);
 		}
 	}
 }
