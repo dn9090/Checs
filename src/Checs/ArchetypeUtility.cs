@@ -68,7 +68,7 @@ namespace Checs
 					if(types[k] == componentTypes[i])
 					{
 						matches = true;
-						break;;
+						break;
 					}
 				}
 				

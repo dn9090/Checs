@@ -16,17 +16,6 @@ namespace Checs
 
 		public Archetype* archetypes;
 
-		public static ArchetypeStore Empty()
-		{
-			ArchetypeStore store = new ArchetypeStore();
-			store.typeLookup = HashMap<EntityArchetype>.Empty();
-			store.count = 0;
-			store.capacity = store.typeLookup.capacity;
-			store.archetypes = MemoryUtility.Malloc<Archetype>(store.capacity);
-
-			return store;
-		}
-
 		public static void Construct(ArchetypeStore* store)
 		{
 			store->typeLookup = HashMap<EntityArchetype>.Empty();
@@ -56,6 +45,9 @@ namespace Checs
 
 		public void Dispose()
 		{
+			for(int i = 0; i < this.count; ++i)
+				ArchetypeChunkArray.Free(this.archetypes[i].chunkArray);
+
 			this.count = 0;
 			this.capacity = 0;
 			this.typeLookup.Dispose();

@@ -2,11 +2,12 @@
 
 namespace Shoot_n_Mine
 {
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            Console.WriteLine("Hello World!");
-        }
-    }
+	class Program
+	{
+		static void Main(string[] args)
+		{
+			GameManager gameManager = new GameManager();
+			gameManager.Run();
+		}
+	}
 }

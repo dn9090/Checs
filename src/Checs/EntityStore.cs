@@ -21,18 +21,6 @@ namespace Checs
 
 		public FreeEntitySlotList freeSlots;
 
-		public static EntityStore Empty()
-		{
-			EntityStore entityStore = new EntityStore();
-			entityStore.version = 1; // To avoid that new Entity() is valid.
-			entityStore.capacity = DefaultCapacity;
-			entityStore.count = 0;
-			entityStore.entitiesInChunk = MemoryUtility.Malloc<EntityInChunk>(entityStore.capacity);
-			entityStore.entityVersions = MemoryUtility.Malloc<int>(entityStore.capacity);
-
-			return entityStore;
-		}
-
 		public static void Construct(EntityStore* store)
 		{
 			store->version = 1; // To avoid that the default entity is valid.
@@ -83,14 +71,34 @@ namespace Checs
 			this.entitiesInChunk[entity.index] = new EntityInChunk(chunk, indexInChunk);
 		}
 
+		public void ReserveEntityBatch(Span<Entity> buffer)
+		{
+			Span<int> slots = this.freeSlots.Recycle(buffer.Length);
+
+			for(int i = 0; i < slots.Length; ++i)
+			{
+				int index = slots[i];
+				buffer[i] = new Entity(index, this.version);
+				this.entityVersions[index] = this.version;
+			}
+
+			for(int i = slots.Length; i < buffer.Length; ++i)
+			{
+				int index = this.count++;
+				buffer[i] = new Entity(index, this.version);
+				this.entityVersions[index] = this.version;
+			}
+		}
+
 		public EntityBatchInChunk GetFirstEntityBatchInChunk(ReadOnlySpan<Entity> entities)
 		{
 			Entity baseEntity = entities[0];
+			var entityInChunk = this.entitiesInChunk[baseEntity.index];
 
 			Chunk* chunk = this.entityVersions[baseEntity.index] == baseEntity.version
-				? this.entitiesInChunk[baseEntity.index].chunk
+				? entityInChunk.chunk
 				: null;
-			int indexInChunk = this.entitiesInChunk[baseEntity.index].index;
+			int indexInChunk = entityInChunk.index;
 			int count = 1;
 
 			for(; count < entities.Length; ++count)
@@ -112,28 +120,10 @@ namespace Checs
 			return new EntityBatchInChunk(chunk, indexInChunk, count);
 		}
 
-		public void ReserveEntityBatch(Span<Entity> buffer)
-		{
-			Span<int> slots = this.freeSlots.Recycle(buffer.Length);
-
-			for(int i = 0; i < slots.Length; ++i)
-			{
-				int index = slots[i];
-				buffer[i] = new Entity(index, this.version);
-				this.entityVersions[index] = this.version;
-			}
-
-			for(int i = slots.Length; i < buffer.Length; ++i)
-			{
-				int index = this.count++;
-				buffer[i] = new Entity(index, this.version);
-				this.entityVersions[index] = this.version;
-			}
-		}
-
 		public void DestroyEntityBatchInChunk(EntityBatchInChunk entityBatchInChunk)
 		{
-			var entities = ChunkUtility.GetEntities(entityBatchInChunk.chunk);
+			var entities = ChunkUtility.GetEntities(entityBatchInChunk.chunk)
+				.Slice(entityBatchInChunk.index, entityBatchInChunk.count);
 			
 			var lastCount = this.count;
 			
@@ -143,17 +133,32 @@ namespace Checs
 					break;
 				
 				--this.count;
+				this.entityVersions[entities[i].index] = -1;
 			}
 
 			Span<int> slots = this.freeSlots.Allocate(entities.Length - (lastCount - this.count));
 
-			for(int i = entities.Length - slots.Length; i < entities.Length; ++i)
+			for(int i = 0; i < slots.Length; ++i)
+			{
 				slots[i] = entities[i].index;
+				this.entityVersions[entities[i].index] = -1;
+			}
 
-			this.count -= slots.Length;
+			//this.count -= slots.Length;
 
 			ChunkUtility.PatchEntityData(entityBatchInChunk.chunk, entityBatchInChunk.index, entityBatchInChunk.count);
 
+			// TODO: This thing needs to be more efficent.
+			var movedEntities = ChunkUtility.GetEntities(entityBatchInChunk.chunk);
+
+			if(entityBatchInChunk.index < movedEntities.Length) // Copied from end?
+			{
+				movedEntities = movedEntities.Slice(entityBatchInChunk.index, Math.Min(movedEntities.Length, entityBatchInChunk.count));
+
+				for(int i = 0; i < movedEntities.Length; ++i)
+					UpdateEntityInChunk(movedEntities[i], entityBatchInChunk.chunk, entityBatchInChunk.index + i);
+			}
+			
 			++this.version;
 		}
 

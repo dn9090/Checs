@@ -50,7 +50,7 @@ namespace Checs
 			this.queryCache->queries[index] = queryData;
 			this.queryCache->typeLookup.Add(hashCode, query);
 
-			return default;
+			return query;
 		}
 
 		internal EntityQueryData* GetUpdatedQueryData(EntityQuery query)
@@ -101,7 +101,7 @@ namespace Checs
 			{
 				if(ArchetypeUtility.MatchesComponentTypes(&archetypes[i], componentTypes))
 				{
-					var index = queryData->archetypeCount;
+					var index = queryData->archetypeCount++;
 					var capacity = queryData->archetypeCapacity;
 
 					if(index == capacity)

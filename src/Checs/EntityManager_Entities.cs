@@ -38,7 +38,7 @@ namespace Checs
 					this.entityStore->UpdateEntityInChunk(entity, chunk, chunkCount + i);
 				}
 			}
-						
+	
 			return entities;
 		}
 
@@ -55,17 +55,13 @@ namespace Checs
 			while(index < entities.Length)
 			{
 				var entityBatchInChunk = this.entityStore->GetFirstEntityBatchInChunk(entities.Slice(index));
-				Chunk* batchChunk = entityBatchInChunk.chunk;
-				int batchCount = entityBatchInChunk.count;
 
-				if(batchChunk == null)
-				{
-					index += batchCount;
+				index += entityBatchInChunk.count;
+
+				if(entityBatchInChunk.chunk == null || entityBatchInChunk.count == 0)
 					continue;
-				}
 
 				this.entityStore->DestroyEntityBatchInChunk(entityBatchInChunk);
-				index += batchCount;
 			}
 		}
 

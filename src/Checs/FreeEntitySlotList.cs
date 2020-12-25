@@ -32,16 +32,17 @@ namespace Checs
 			{
 				this.capacity = MemoryUtility.RoundToPowerOfTwo(requiredCapacity);
 				this.slots = MemoryUtility.Realloc<int>(this.slots, this.capacity);
-			} else if(requiredCapacity < this.capacity / 2) {
-				this.slots = MemoryUtility.Realloc<int>(this.slots, this.capacity / 2);
 			}
 		}
 
 		public Span<int> Allocate(int count)
 		{
 			EnsureCapacity(count);
+			
+			var slots = new Span<int>(&this.slots[this.count], count);
 			this.count += count;
-			return new Span<int>(&this.slots[this.count], count);
+
+			return slots;
 		}
 
 		public Span<int> Recycle(int count)

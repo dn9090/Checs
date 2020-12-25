@@ -14,17 +14,6 @@ namespace Checs
 		public HashMap<EntityQuery> typeLookup;
 
 		public EntityQueryData* queries;
-	
-		public static EntityQueryCache Empty()
-		{
-			EntityQueryCache cache = new EntityQueryCache();
-			cache.typeLookup = HashMap<EntityQuery>.Empty();
-			cache.count = 0;
-			cache.capacity = cache.typeLookup.capacity;
-			cache.queries = MemoryUtility.Malloc<EntityQueryData>(cache.capacity);
-
-			return cache;
-		}
 
 		public static void Construct(EntityQueryCache* cache)
 		{

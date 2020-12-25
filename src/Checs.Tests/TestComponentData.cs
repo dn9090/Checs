@@ -2,7 +2,7 @@ using System;
 
 namespace Checs.Tests
 {
-	public struct Position
+	public struct Position : IComponentData
 	{
 		public float x;
 
@@ -18,7 +18,7 @@ namespace Checs.Tests
 		}
 	}
 
-	public struct EulerAngles
+	public struct EulerAngles : IComponentData
 	{
 		public float x;
 
@@ -34,7 +34,7 @@ namespace Checs.Tests
 		}
 	}
 
-	public struct Teleporter
+	public struct Teleporter : IComponentData
 	{
 		public Position from;
 

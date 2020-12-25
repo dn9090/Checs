@@ -84,6 +84,32 @@ namespace Checs
 
 		public static void PatchEntityData(Chunk* chunk, int index, int count)
 		{
+			var sizes = chunk->archetype->componentSizes;
+			var offsets = chunk->archetype->componentOffsets;
+			var componentCount = chunk->archetype->componentCount;
+
+			var startIndex = chunk->count - count;
+
+			var source = chunk->buffer + (startIndex * sizeof(Entity));
+			var dest = chunk->buffer + (index * sizeof(Entity));
+
+			Unsafe.CopyBlock((void*)dest, (void*)source, (uint)(count * sizeof(Entity)));
+
+			for(int i = 0; i < componentCount; ++i)
+			{
+				var offsetInBuffer = chunk->buffer + offsets[i];
+				source = offsetInBuffer + (startIndex * sizes[i]);
+				dest = offsetInBuffer + (index * sizes[i]);
+				Unsafe.CopyBlock((void*)dest, (void*)source, (uint)(count * sizes[i]));
+			}
+
+			chunk->count -= count;
+			chunk->archetype->entityCount -= count;
+		}
+
+		/*
+		public static void PatchEntityData(Chunk* chunk, int index, int count)
+		{
 			int startIndex = index + count;
 
 			var sizes = chunk->archetype->componentSizes;
@@ -93,19 +119,21 @@ namespace Checs
 			var source = chunk->buffer + (startIndex * sizeof(Entity));
 			var dest = chunk->buffer + (index * sizeof(Entity));
 
-			Unsafe.CopyBlock((void*)source, (void*)source, (uint)(chunk->count - startIndex));
+			//Unsafe.CopyBlock((void*)dest, (void*)source, (uint)((chunk->count - startIndex) * sizeof(Entity)));
+			Unsafe.CopyBlock((void*)dest, (void*)source, (uint)(count * sizeof(Entity)));
 
 			for(int i = 0; i < componentCount; ++i)
 			{
 				var offsetInBuffer = chunk->buffer + offsets[i];
 				source = offsetInBuffer + (startIndex * sizes[i]);
 				dest = offsetInBuffer + (index * sizes[i]);
-				Unsafe.CopyBlock((void*)dest, (void*)source, (uint)((chunk->count - startIndex) * sizes[i]));
+				Unsafe.CopyBlock((void*)dest, (void*)source, (uint)(count * sizes[i]));
 			}
 
 			chunk->count -= count;
 			chunk->archetype->entityCount -= count;
 		}
+		*/
 
 		public static Span<Entity> GetEntities(Chunk* chunk)
 		{
@@ -162,15 +190,14 @@ namespace Checs
 			return true;
 		}
 
-		public static bool TryGetRefComponentData<T>(Chunk* chunk, int index, int typeIndex, ref T value) where T : unmanaged
+		public static T* GetComponentDataPtr<T>(Chunk* chunk, int index, int typeIndex) where T : unmanaged
 		{
 			var indexInArchetype = ArchetypeUtility.GetTypeIndex(chunk->archetype, typeIndex);
 
 			if(indexInArchetype < 0)
-				return false;
+				return null;
 			
-			value = Unsafe.AsRef<T>(&GetComponentPtrInBuffer<T>(chunk, indexInArchetype)[index]);
-			return true;
+			return &GetComponentPtrInBuffer<T>(chunk, indexInArchetype)[index];
 		}
 
 		public static Span<T> GetComponentData<T>(Chunk* chunk, int typeIndex) where T : unmanaged
