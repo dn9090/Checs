@@ -30,6 +30,8 @@ namespace Checs
 
 			offsets[0] = sizeof(Entity) * capacity;
 
+			// TODO: Optimize with Vector.
+
 			for(int i = 1; i < count; ++i)
 				offsets[i] = offsets[i - 1] + (capacity * componentSizes[i - 1]);
 			

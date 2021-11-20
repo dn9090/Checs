@@ -74,7 +74,7 @@ namespace Checs
 			// works because a created archetype cannot be removed.
 			queryData->matchedArchetypeCount = count;
 
-			if(uncheckedArchetypes < 16)
+			if(uncheckedArchetypes <= 16)
 			{
 				// If only a few archetypes have been added preallocate the
 				// archetype array.

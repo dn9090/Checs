@@ -42,9 +42,6 @@ namespace Checs
 
 		public T GetComponentData<T>(Entity entity) where T : unmanaged, IComponentData
 		{
-			if(!IsAlive(entity))
-				return default;
-
 			TryGetComponentData<T>(entity, out T value);
 			return value;
 		}
@@ -121,13 +118,37 @@ namespace Checs
 				this.entityStore->MoveEntityToArchetype(entity, dest);
 		}
 
+		public int CopyComponentData<T>(EntityArchetype archetype, Span<T> destination) where T : unmanaged, IComponentData
+			=> CopyComponentDataInternal(GetArchetypeInternal(archetype), destination, TypeRegistry<T>.typeIndex);
 
-		// int CopyComponentData<T>(ref Span<T> values)
+		public int CopyComponentData<T>(EntityQuery query, Span<T> destination) where T : unmanaged, IComponentData
+		{
+			var queryData = GetUpdatedQueryData(query);
+			var typeIndex = TypeRegistry<T>.typeIndex;
+			var count = 0;
 
-		// int CopyComponentData<T>(ref Span<Entity> entities, ref Span<T> values)
+			for(int i = 0; i < queryData->archetypeCount && count < destination.Length; ++i)
+				count += CopyComponentDataInternal(queryData->archetypes[i], destination.Slice(count), typeIndex);
 
-		// int CopyComponentData<T>(EntityArchetype archetype, ref Span<T> values)
+			return count;
+		}
 
-		// int CopyComponentData<T>(EntityArchetype archetype, ref Span<Entity> entities, ref Span<T> values)
+		internal int CopyComponentDataInternal<T>(Archetype* archetype, Span<T> destination, int typeIndex)  where T : unmanaged
+		{
+			var chunkCount = archetype->chunkArray->count;
+			var chunks = archetype->chunkArray->chunks;
+			var count = 0;
+
+			for(int i = 0; i < chunkCount && count < destination.Length; ++i) // This needs some work and cleanup.
+			{
+				var slice = destination.Slice(count);
+				var data = ChunkUtility.GetComponentData<T>(chunks[i], typeIndex);
+				var max = slice.Length < data.Length ? slice.Length : data.Length;
+				data.Slice(0, max).CopyTo(slice);
+				count += max;
+			}
+
+			return count;
+		}
 	}
 }

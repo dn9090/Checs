@@ -50,7 +50,7 @@ namespace Checs
 			Span<int> componentSizes, int absoluteBlockSize)
 		{
 			int hashCode = 0;
-			for(int i = 0; i < componentTypes.Length; ++i)
+			for(int i = 0; i < componentTypes.Length; ++i) // Can be calculated beforehand.
 				hashCode = HashCode.Combine(hashCode, componentTypes[i]);
 			
 			if(this.archetypeStore->typeLookup.TryGet(hashCode, out EntityArchetype entityArchetype))
@@ -65,7 +65,7 @@ namespace Checs
 
 			int index = this.archetypeStore->count++;
 
-			Archetype archetype = new Archetype();
+			Archetype archetype = new Archetype(); // Rework
 			archetype.chunkArray = ArchetypeChunkArray.Allocate(&this.archetypeStore->archetypes[index]);
 			archetype.chunkCapacity = chunkCapacity;
 			archetype.entityCount = 0;

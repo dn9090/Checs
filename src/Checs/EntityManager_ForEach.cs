@@ -15,11 +15,9 @@ namespace Checs
 		public void ForEach(EntityQuery query, Action<EntityBatch> action)
 		{
 			var queryData = GetUpdatedQueryData(query);
-			var count = queryData->archetypeCount;
-			var archetypes = queryData->archetypes;
-
-			for(int i = 0; i < count; ++i)
-				ForEachInternal(archetypes[i], action);
+			
+			for(int i = 0; i < queryData->archetypeCount; ++i)
+				ForEachInternal(queryData->archetypes[i], action);
 		}
 
 		internal void ForEachInternal(Archetype* archetype, Action<EntityBatch> action)

@@ -8,28 +8,45 @@ namespace Checs
 
 	public unsafe partial class EntityManager
 	{
+		public Entity CreateEntity()
+		{
+			Span<Entity> entity = stackalloc Entity[1];
+			CreateEntity(entity);
+			
+			return entity[0];
+		}
+
 		public ReadOnlySpan<Entity> CreateEntity(int count) =>
 			CreateEntity(CreateArchetype(), count);
 
-		public ReadOnlySpan<Entity> CreateEntity(EntityArchetype archetype, int count) =>
-			CreateEntityInternal(GetArchetypeInternal(archetype), count);
-
-		internal ReadOnlySpan<Entity> CreateEntityInternal(Archetype* archetype, int count)
+		public ReadOnlySpan<Entity> CreateEntity(EntityArchetype archetype, int count)
 		{
-			this.entityStore->EnsureCapacity(count);
-			
 			Span<Entity> entities = new Entity[count];
+			CreateEntityInternal(GetArchetypeInternal(archetype), entities);
+			
+			return entities;
+		}
+
+		public void CreateEntity(Span<Entity> entities) =>
+			CreateEntity(CreateArchetype(), entities);
+
+		public void CreateEntity(EntityArchetype archetype, Span<Entity> entities) =>
+			CreateEntityInternal(GetArchetypeInternal(archetype), entities);
+
+		internal void CreateEntityInternal(Archetype* archetype, Span<Entity> entities)
+		{
+			this.entityStore->EnsureCapacity(entities.Length);
 			this.entityStore->ReserveEntityBatch(entities);
 
-			int allocatedEntityCount = 0;
-			int chunkIndexInArray = 0;
+			var allocatedEntityCount = 0;
+			var chunkIndexInArray = 0;
 
-			while(allocatedEntityCount < count)
+			while(allocatedEntityCount < entities.Length)
 			{
 				Chunk* chunk = archetype->chunkArray->GetChunkWithEmptySlots(ref chunkIndexInArray);
 				int chunkCount = chunk->count;
 
-				Span<Entity> entitiesInChunk = ChunkUtility.AllocateEntities(chunk, count - allocatedEntityCount);
+				Span<Entity> entitiesInChunk = ChunkUtility.AllocateEntities(chunk, entities.Length - allocatedEntityCount);
 
 				for(int i = 0; i < entitiesInChunk.Length; ++i)
 				{
@@ -38,14 +55,12 @@ namespace Checs
 					this.entityStore->UpdateEntityInChunk(entity, chunk, chunkCount + i);
 				}
 			}
-	
-			return entities;
 		}
 
 		public void DestroyEntity(Entity entity)
 		{
 			Span<Entity> entities = stackalloc Entity[] { entity };
-			DestroyEntity(entities);
+			DestroyEntity(entities); // Rework
 		}
 
 		public void DestroyEntity(ReadOnlySpan<Entity> entities)
@@ -77,7 +92,7 @@ namespace Checs
 				this.entityStore->MoveEntityToArchetype(entity, ptr);
 		}
 
-		public ReadOnlySpan<Entity> GetEntities(EntityArchetype archetype)
+		public ReadOnlySpan<Entity> GetEntities(EntityArchetype archetype) // Buffered?
 		{
 			Archetype* ptr = GetArchetypeInternal(archetype);
 			Span<Entity> entities = new Entity[ptr->entityCount];
@@ -88,19 +103,18 @@ namespace Checs
 
 		public ReadOnlySpan<Entity> GetEntities(EntityQuery query)
 		{
-			int entityCount = 0;
-			
 			var queryData = GetUpdatedQueryData(query);
-			var count = queryData->archetypeCount;
 			var archetypes = queryData->archetypes;
+			var archetypeCount = queryData->archetypeCount;
+			var entityCount = 0;
 
-			for(int i = 0; i < count; ++i)
+			for(int i = 0; i < archetypeCount; ++i)
 				entityCount += archetypes[i]->entityCount;
 
 			int entitiesInBuffer = 0;
 			Span<Entity> entities = new Entity[entityCount];
 
-			for(int i = 0; i < count; ++i)
+			for(int i = 0; i < archetypeCount; ++i)
 			{
 				var chunks = archetypes[i]->chunkArray->chunks;
 				var chunkCount = archetypes[i]->chunkArray->count;
@@ -109,5 +123,19 @@ namespace Checs
 
 			return entities;
 		}
+
+		public int GetEntityCount(EntityQuery query)
+		{
+			var queryData = GetUpdatedQueryData(query);
+			var count = 0;
+
+			for(int i = 0; i < queryData->archetypeCount; ++i)
+				count += queryData->archetypes[i]->entityCount;
+				
+			return count;
+		}
+
+		public int GetEntityCount(EntityArchetype archetype) =>
+			GetArchetypeInternal(archetype)->entityCount;
 	}
 }

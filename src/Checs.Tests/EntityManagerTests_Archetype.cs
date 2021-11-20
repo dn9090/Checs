@@ -26,8 +26,28 @@ namespace Checs.Tests
 
 			Assert.Equal(left, right);
 
-			left = manager.CreateArchetype(new Type[] { typeof(Position), typeof(EulerAngles), typeof(Teleporter) });
-			right = manager.CreateArchetype(new Type[] { typeof(Position), typeof(EulerAngles), typeof(Teleporter) });
+			left = manager.CreateArchetype(new Type[] { typeof(Position), typeof(EulerAngles), typeof(Line) });
+			right = manager.CreateArchetype(new Type[] { typeof(Position), typeof(EulerAngles), typeof(Line) });
+
+			Assert.Equal(left, right);
+		}
+
+		[Fact]
+		public void ArchetypesAreEqual_Large()
+		{
+			using EntityManager manager = new EntityManager();
+
+			var types = new Type[]
+			{
+				typeof(ComponentA), typeof(ComponentB), typeof(ComponentC), typeof(ComponentD),
+				typeof(ComponentE), typeof(ComponentF), typeof(ComponentG), typeof(ComponentH),
+				typeof(ComponentI), typeof(ComponentJ), typeof(ComponentK), typeof(ComponentL),
+				typeof(ComponentM), typeof(ComponentN), typeof(ComponentO), typeof(ComponentP),
+				typeof(ComponentQ), typeof(ComponentR), typeof(ComponentS), typeof(ComponentT)
+			};
+
+			var left = manager.CreateArchetype(types);
+			var right = manager.CreateArchetype(types);
 
 			Assert.Equal(left, right);
 		}
@@ -43,7 +63,37 @@ namespace Checs.Tests
 			Assert.NotEqual(left, right);
 
 			left = manager.CreateArchetype(new Type[] { typeof(Position), typeof(EulerAngles) });
-			right = manager.CreateArchetype(new Type[] { typeof(Position), typeof(EulerAngles), typeof(Teleporter) });
+			right = manager.CreateArchetype(new Type[] { typeof(Position), typeof(EulerAngles), typeof(Line) });
+
+			Assert.NotEqual(left, right);
+		}
+
+		[Fact]
+		public void ArchetypesAreNotEqual_Large()
+		{
+			using EntityManager manager = new EntityManager();
+
+			var lTypes = new Type[]
+			{
+				typeof(ComponentA), typeof(ComponentB), typeof(ComponentC), typeof(ComponentD),
+				typeof(ComponentE), typeof(ComponentF), typeof(ComponentG), typeof(ComponentH),
+				typeof(ComponentI), typeof(ComponentJ), typeof(ComponentK), typeof(ComponentL),
+				typeof(ComponentM), typeof(ComponentN), typeof(ComponentO), typeof(ComponentP),
+				typeof(ComponentQ), typeof(ComponentR), typeof(ComponentS), typeof(ComponentT)
+			};
+
+			var rTypes = new Type[]
+			{
+				typeof(ComponentA), typeof(ComponentB), typeof(ComponentC), typeof(ComponentD),
+				typeof(ComponentE), typeof(ComponentF), typeof(ComponentG), typeof(ComponentH),
+				typeof(ComponentI), typeof(ComponentJ), typeof(ComponentK), typeof(ComponentL),
+				typeof(ComponentM), typeof(ComponentN), typeof(ComponentO), typeof(ComponentP),
+				typeof(ComponentQ), typeof(ComponentR), typeof(ComponentS), typeof(ComponentT),
+				typeof(ComponentU), typeof(ComponentV), typeof(ComponentW), typeof(ComponentX)
+			};
+
+			var left = manager.CreateArchetype(lTypes);
+			var right = manager.CreateArchetype(rTypes);
 
 			Assert.NotEqual(left, right);
 		}

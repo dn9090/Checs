@@ -6,7 +6,7 @@ namespace Checs
 {
 	public class World : IDisposable
 	{
-		internal EntityManager entityManager;
+		public EntityManager entityManager;
 
 		public World()
 		{
@@ -29,7 +29,7 @@ namespace Checs
 		public EntityArchetype GetArchetype(Entity entity) => this.entityManager.GetArchetype(entity);
 	
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public Entity CreateEntity() => this.entityManager.CreateEntity(1)[0];
+		public Entity CreateEntity() => this.entityManager.CreateEntity(1)[0]; // @Todo: Seperate method...
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public Entity CreateEntity(EntityArchetype archetype) => this.entityManager.CreateEntity(archetype, 1)[0];

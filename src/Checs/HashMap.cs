@@ -8,11 +8,11 @@ namespace Checs
 	{
 		private const int DefaultCapacity = 16;
 
+		public int hashMask => capacity - 1;
+
 		public int count;
 
 		public int capacity;
-
-		public int hashMask => capacity - 1;
 
 		private int* m_Hashes;
 
