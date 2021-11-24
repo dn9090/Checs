@@ -1,14 +1,16 @@
 using System;
+using System.Runtime.InteropServices;
 
 namespace Checs
 {
+	[StructLayout(LayoutKind.Sequential)]
 	public readonly struct Entity : IEquatable<Entity>, IComparable<Entity>
 	{
 		public readonly int index;
 
-		public readonly int version;
+		public readonly uint version;
 
-		internal Entity(int index, int version)
+		internal Entity(int index, uint version)
 		{
 			this.index = index;
 			this.version = version;

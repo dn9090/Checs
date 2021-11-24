@@ -8,10 +8,12 @@ namespace Checs
 
 	public unsafe partial class EntityManager
 	{
-		public Entity CreateEntity()
+		public Entity CreateEntity() => CreateEntity(CreateArchetype());
+
+		public Entity CreateEntity(EntityArchetype archetype)
 		{
 			Span<Entity> entity = stackalloc Entity[1];
-			CreateEntity(entity);
+			CreateEntity(archetype, entity);
 			
 			return entity[0];
 		}
@@ -40,19 +42,53 @@ namespace Checs
 
 			var allocatedEntityCount = 0;
 			var chunkIndexInArray = 0;
+			
+			// This needs investigation: For some reason calling the ReserveEntityBatch
+			// with the Span is faster than with the pointer..., even though the entire
+			// fixed statement in the SSE branch is eleminated, as well as (possibly) the
+			// ArgumentOutOfRange checks.
+
+			fixed(Entity* ptr = entities)
+			{
+				while(allocatedEntityCount < entities.Length)
+				{
+					Chunk* chunk = archetype->chunkArray->GetChunkWithEmptySlots(ref chunkIndexInArray);
+					var chunkCount = chunk->count;
+
+					var buffer = ptr + allocatedEntityCount;
+					var allocatedInChunk = ChunkUtility.AllocateEntities(chunk, buffer, entities.Length - allocatedEntityCount);
+
+					for(int i = 0; i < allocatedInChunk; ++i)
+					{
+						Entity entity = buffer[i];
+						this.entityStore->entitiesInChunk[entity.index] = new EntityInChunk(chunk, chunkCount + i, entity.version);
+					}
+
+					allocatedEntityCount += allocatedInChunk;
+				}
+			}
+		}
+
+		internal void CreateEntityInternal_LEGACY(Archetype* archetype, Span<Entity> entities)
+		{
+			this.entityStore->EnsureCapacity(entities.Length);
+			this.entityStore->ReserveEntityBatch(entities);
+
+			var allocatedEntityCount = 0;
+			var chunkIndexInArray = 0;
 
 			while(allocatedEntityCount < entities.Length)
 			{
 				Chunk* chunk = archetype->chunkArray->GetChunkWithEmptySlots(ref chunkIndexInArray);
 				int chunkCount = chunk->count;
 
-				Span<Entity> entitiesInChunk = ChunkUtility.AllocateEntities(chunk, entities.Length - allocatedEntityCount);
+				Span<Entity> entitiesInChunk = ChunkUtility.AllocateEntities_LEGACY(chunk, entities.Length - allocatedEntityCount);
 
 				for(int i = 0; i < entitiesInChunk.Length; ++i)
 				{
 					Entity entity = entities[allocatedEntityCount++];
 					entitiesInChunk[i] = entity;
-					this.entityStore->UpdateEntityInChunk(entity, chunk, chunkCount + i);
+					this.entityStore->entitiesInChunk[entity.index] = new EntityInChunk(chunk, chunkCount + i, entity.version);
 				}
 			}
 		}
@@ -78,6 +114,8 @@ namespace Checs
 
 				this.entityStore->DestroyEntityBatchInChunk(entityBatchInChunk);
 			}
+
+			entityStore->MarkIndicesAsFree(entities);
 		}
 
 		public bool IsAlive(Entity entity) => this.entityStore->Exists(entity);

@@ -5,16 +5,19 @@ using System.Runtime.InteropServices;
 namespace Checs
 {
 	[StructLayout(LayoutKind.Sequential)]
-	internal unsafe readonly struct EntityInChunk
+	internal unsafe struct EntityInChunk
 	{
-		public readonly Chunk* chunk;
+		public Chunk* chunk;
 	
-		public readonly int index;
+		public int index;
 
-		public EntityInChunk(Chunk* chunk, int index)
+		public uint version;
+
+		public EntityInChunk(Chunk* chunk, int index, uint version)
 		{
 			this.chunk = chunk;
 			this.index = index;
+			this.version = version;
 		}
 	}
 }

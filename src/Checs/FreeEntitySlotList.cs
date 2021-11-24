@@ -47,7 +47,7 @@ namespace Checs
 
 		public Span<int> Recycle(int count)
 		{
-			int availableSlots = Math.Min(this.count, count);
+			int availableSlots = this.count <= count ? this.count : count;
 			this.count -= availableSlots;
 			return new Span<int>(&this.slots[this.count], availableSlots);
 		}

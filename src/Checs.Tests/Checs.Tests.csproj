@@ -16,5 +16,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Checs\Checs.csproj" />
   </ItemGroup>
-
+  
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  
 </Project>

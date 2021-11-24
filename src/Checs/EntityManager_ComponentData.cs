@@ -139,6 +139,30 @@ namespace Checs
 			var chunks = archetype->chunkArray->chunks;
 			var count = 0;
 
+			fixed(T* dest = destination)
+			{
+				for(int i = 0; i < chunkCount && count < destination.Length; ++i)
+				{
+					var indexInArchetype = ArchetypeUtility.GetTypeIndex(chunks[i]->archetype, typeIndex);
+					var bufferCount = destination.Length - count;
+					var max = bufferCount < chunks[i]->count ? bufferCount : chunks[i]->count;
+					var size = max * sizeof(T);
+
+					Buffer.MemoryCopy(ChunkUtility.GetComponentPtrInBuffer<T>(chunks[i], indexInArchetype), dest + count, size, size);
+
+					count += max;
+				}
+			}
+
+			return count;
+		}
+
+		internal int CopyComponentDataInternal2<T>(Archetype* archetype, Span<T> destination, int typeIndex)  where T : unmanaged
+		{
+			var chunkCount = archetype->chunkArray->count;
+			var chunks = archetype->chunkArray->chunks;
+			var count = 0;
+
 			for(int i = 0; i < chunkCount && count < destination.Length; ++i) // This needs some work and cleanup.
 			{
 				var slice = destination.Slice(count);

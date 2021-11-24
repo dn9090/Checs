@@ -111,7 +111,7 @@ struct EntityCommandBufferData
 
 		public Entity CreateEntity()
 		{
-			Entity entity = new Entity(int.MaxValue - this.count, -1);
+			Entity entity = new Entity(int.MaxValue - this.count, 0);
 			Add(new EntityInBuffer(entity, EntityCommand.Create));
 
 			return entity;

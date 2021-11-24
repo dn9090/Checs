@@ -2,6 +2,28 @@ using System;
 
 namespace Checs.Tests
 {
+#pragma warning disable CS0169
+
+	public struct Id : IComponentData
+	{
+		public int value;
+
+		public Id(int value)
+		{
+			this.value = value;
+		}
+	}
+
+	public struct Layer : IComponentData
+	{
+		public int value;
+
+		public Layer(int value)
+		{
+			this.value = value;
+		}
+	}
+
 	public struct Position : IComponentData
 	{
 		public float x;
@@ -18,7 +40,7 @@ namespace Checs.Tests
 		}
 	}
 
-	public struct EulerAngles : IComponentData
+	public struct Rotation : IComponentData
 	{
 		public float x;
 
@@ -26,11 +48,14 @@ namespace Checs.Tests
 
 		public float z;
 
-		public EulerAngles(float x, float y, float z)
+		public float w;
+
+		public Rotation(float x, float y, float z, float w)
 		{
 			this.x = x;
 			this.y = y;
 			this.z = z;
+			this.w = w;
 		}
 	}
 

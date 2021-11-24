@@ -1,6 +1,8 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics.X86;
+using System.Runtime.Intrinsics;
 using System.Threading;
 
 namespace Checs
@@ -40,12 +42,16 @@ namespace Checs
 			for(int i = 0; i < componentCount; ++i)
 			{
 				var offsetInBuffer = chunk->buffer + offset[i];
+
+				// ZeroMemory would possibly be the better call, but it's internal.
 				MemoryUtility.MemSet(offsetInBuffer + (sizes[i] * index), 0, sizes[i] * count);
 			}
 		}
 
 		public static void CopyComponentData(Chunk* source, Chunk* destination, int sourceIndex, int destinationIndex)
 		{
+			// TODO: I've no clue what this is about...
+
 			var types = source->archetype->componentTypes;
 			var count = source->archetype->componentCount;
 			var sizes = source->archetype->componentSizes;
@@ -59,19 +65,44 @@ namespace Checs
 
 				if(indexInChunk == -1)
 					continue;
-
+			
 				var offsetInSourceBuffer = source->buffer + sourceOffsets[i] + (sourceIndex * sizes[i]);
 				var offsetInDestBuffer = destination->buffer + destOffsets[indexInChunk] + (destinationIndex * sizes[i]);
 
-				Unsafe.CopyBlock((void*)offsetInDestBuffer, (void*)offsetInSourceBuffer, (uint)sizes[indexInChunk]);
+				Buffer.MemoryCopy(offsetInDestBuffer, offsetInSourceBuffer, (uint)sizes[indexInChunk], (uint)sizes[indexInChunk]);
+				// Unsafe.CopyBlock((void*)offsetInDestBuffer, (void*)offsetInSourceBuffer, (uint)sizes[indexInChunk]);
 			}
 		}
 
-		public static Span<Entity> AllocateEntities(Chunk* chunk, int count)
+		public static int AllocateEntities(Chunk* chunk, Entity* entities, int count)
+		{
+			var free = chunk->capacity - chunk->count;
+			count = (free <= count) ? free : count;
+	
+			var index = chunk->count;
+			var size = count * sizeof(Entity);
+			
+			// This is almost as fast (just as a reminder):
+			// var buffer = new Span<Entity>(((Entity*)chunk->buffer) + index, count);
+			// entities.Slice(0, count).CopyTo(buffer);
+
+			// An SSE copy could be faster (not sure), because it avoids
+			// the P/Invoke to memmove.
+			Buffer.MemoryCopy(entities, ((Entity*)chunk->buffer) + index, size, size);
+
+			InitializeComponentData(chunk, index, count);
+
+			chunk->count += count;
+			chunk->archetype->entityCount += count;
+
+			return count;
+		}
+
+		public static Span<Entity> AllocateEntities_LEGACY(Chunk* chunk, int count)
 		{
 			int startIndex = chunk->count;
 			int free = chunk->capacity - chunk->count;
-			count = Math.Min(free, count);
+			count = (free <= count) ? free : count;
 	
 			InitializeComponentData(chunk, startIndex, count);
 
@@ -84,56 +115,51 @@ namespace Checs
 
 		public static void PatchEntityData(Chunk* chunk, int index, int count)
 		{
-			var sizes = chunk->archetype->componentSizes;
-			var offsets = chunk->archetype->componentOffsets;
-			var componentCount = chunk->archetype->componentCount;
+			// There is probably some better way to do this...
 
-			var startIndex = chunk->count - count;
-
-			var source = chunk->buffer + (startIndex * sizeof(Entity));
-			var dest = chunk->buffer + (index * sizeof(Entity));
-
-			Unsafe.CopyBlock((void*)dest, (void*)source, (uint)(count * sizeof(Entity)));
-
-			for(int i = 0; i < componentCount; ++i)
-			{
-				var offsetInBuffer = chunk->buffer + offsets[i];
-				source = offsetInBuffer + (startIndex * sizes[i]);
-				dest = offsetInBuffer + (index * sizes[i]);
-				Unsafe.CopyBlock((void*)dest, (void*)source, (uint)(count * sizes[i]));
-			}
-
-			chunk->count -= count;
-			chunk->archetype->entityCount -= count;
-		}
-
-		/*
-		public static void PatchEntityData(Chunk* chunk, int index, int count)
-		{
-			int startIndex = index + count;
+			//          index = 2  count = 3
+			//                v-----|
+			// chunk -> 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+			//                               ^
+			//              chunk->count - count = 7
+			//
+			//                      index = 6  count = 4
+			//                            v--------|
+			// chunk -> 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+			//                            ^
+			//              chunk->count - count = 6
+			//
+			//                  index = 5  count = 4
+			//                         v--------|
+			// chunk -> 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+			//                            ^
+			//              chunk->count - count = 6
+			//
 
 			var sizes = chunk->archetype->componentSizes;
 			var offsets = chunk->archetype->componentOffsets;
 			var componentCount = chunk->archetype->componentCount;
 
-			var source = chunk->buffer + (startIndex * sizeof(Entity));
+			var movableCount = chunk->count - (index + count);
+			var patchCount = movableCount < count ? movableCount : count;
+			var sourceIndex = chunk->count - patchCount;
+
+			var source = chunk->buffer + (sourceIndex * sizeof(Entity));
 			var dest = chunk->buffer + (index * sizeof(Entity));
 
-			//Unsafe.CopyBlock((void*)dest, (void*)source, (uint)((chunk->count - startIndex) * sizeof(Entity)));
-			Unsafe.CopyBlock((void*)dest, (void*)source, (uint)(count * sizeof(Entity)));
+			Unsafe.CopyBlock(dest, source, (uint)(patchCount * sizeof(Entity)));
 
-			for(int i = 0; i < componentCount; ++i)
+			for(int i = 0; i < componentCount; ++i) // Vector?
 			{
 				var offsetInBuffer = chunk->buffer + offsets[i];
-				source = offsetInBuffer + (startIndex * sizes[i]);
+				source = offsetInBuffer + (sourceIndex * sizes[i]);
 				dest = offsetInBuffer + (index * sizes[i]);
-				Unsafe.CopyBlock((void*)dest, (void*)source, (uint)(count * sizes[i]));
+				Unsafe.CopyBlock(dest, source, (uint)(patchCount * sizes[i]));
 			}
 
 			chunk->count -= count;
 			chunk->archetype->entityCount -= count;
 		}
-		*/
 
 		public static Span<Entity> GetEntities(Chunk* chunk)
 		{

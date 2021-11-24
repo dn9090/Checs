@@ -21,13 +21,13 @@ namespace Checs.Tests
 
 			Assert.Equal(left, right);
 
-			left = manager.CreateArchetype(new Type[] { typeof(Position), typeof(EulerAngles) });
-			right = manager.CreateArchetype(new Type[] { typeof(Position), typeof(EulerAngles) });
+			left = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation) });
+			right = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation) });
 
 			Assert.Equal(left, right);
 
-			left = manager.CreateArchetype(new Type[] { typeof(Position), typeof(EulerAngles), typeof(Line) });
-			right = manager.CreateArchetype(new Type[] { typeof(Position), typeof(EulerAngles), typeof(Line) });
+			left = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation), typeof(Line) });
+			right = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation), typeof(Line) });
 
 			Assert.Equal(left, right);
 		}
@@ -62,8 +62,8 @@ namespace Checs.Tests
 
 			Assert.NotEqual(left, right);
 
-			left = manager.CreateArchetype(new Type[] { typeof(Position), typeof(EulerAngles) });
-			right = manager.CreateArchetype(new Type[] { typeof(Position), typeof(EulerAngles), typeof(Line) });
+			left = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation) });
+			right = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation), typeof(Line) });
 
 			Assert.NotEqual(left, right);
 		}
