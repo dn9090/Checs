@@ -33,18 +33,18 @@ namespace Checs.Tests
 		{
 			using EntityManager manager = new EntityManager();
 
-			var types = new Type[] { typeof(Id) };
+			var types = new Type[] { typeof(Layer) };
 			var archetype = manager.CreateArchetype(types);
 
 			var entity = manager.CreateEntity(archetype);
 
-			manager.SetComponentData(entity, new Id(12345));
+			manager.SetComponentData(entity, new Layer(12345));
 
-			Assert.Equal(12345, manager.GetComponentData<Id>(entity).value);
+			Assert.Equal(12345, manager.GetComponentData<Layer>(entity).value);
 
 			manager.ForEach(archetype, (batch) => {
 				Assert.Equal(1, batch.length);
-				Assert.Equal(12345, batch.GetComponentData<Id>()[0].value);
+				Assert.Equal(12345, batch.GetComponentData<Layer>()[0].value);
 			});
 		}
 
@@ -55,19 +55,24 @@ namespace Checs.Tests
 
 			var types = new Type[] { typeof(Layer), typeof(Position), typeof(Rotation) };
 			var archetype = manager.CreateArchetype(types);
+			var query = manager.CreateQuery(types);
 
 			var entities = manager.CreateEntity(archetype, 1000);
 
 			manager.SetComponentData(entities[0], new Layer(10));
 			manager.SetComponentData(entities[entities.Length - 1], new Layer(100));
 
-			var buffer = new Layer[manager.GetEntityCount(archetype)];
-			manager.CopyComponentData<Layer>(archetype, buffer);
+			var archetypeBuffer = new Layer[manager.GetEntityCount(archetype)];
+			manager.CopyComponentData<Layer>(archetype, archetypeBuffer);
 
-			Assert.Equal(10, buffer[0].value);
-			Assert.Equal(100, buffer[buffer.Length - 1].value);
+			Assert.Equal(10, archetypeBuffer[0].value);
+			Assert.Equal(100, archetypeBuffer[archetypeBuffer.Length - 1].value);
 
-			// TODO: Test with query.
+			var queryBuffer = new Layer[manager.GetEntityCount(query)];
+			manager.CopyComponentData<Layer>(query, queryBuffer);
+
+			Assert.Equal(10, queryBuffer[0].value);
+			Assert.Equal(100, queryBuffer[queryBuffer.Length - 1].value);
 		}
 	}
 }

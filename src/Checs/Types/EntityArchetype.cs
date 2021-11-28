@@ -4,7 +4,7 @@ namespace Checs
 {
 	public readonly struct EntityArchetype : IEquatable<EntityArchetype>, IComparable<EntityArchetype>
 	{
-		public readonly int index;
+		public readonly int index; // This could actually be a pointer, because Archetypes can not be removed.
 
 		internal EntityArchetype(int index)
 		{

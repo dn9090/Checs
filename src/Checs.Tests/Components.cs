@@ -4,16 +4,6 @@ namespace Checs.Tests
 {
 #pragma warning disable CS0169
 
-	public struct Id : IComponentData
-	{
-		public int value;
-
-		public Id(int value)
-		{
-			this.value = value;
-		}
-	}
-
 	public struct Layer : IComponentData
 	{
 		public int value;
@@ -56,6 +46,22 @@ namespace Checs.Tests
 			this.y = y;
 			this.z = z;
 			this.w = w;
+		}
+	}
+
+	public struct Velocity : IComponentData
+	{
+		public float x;
+
+		public float y;
+
+		public float z;
+
+		public Velocity(float x, float y, float z)
+		{
+			this.x = x;
+			this.y = y;
+			this.z = z;
 		}
 	}
 

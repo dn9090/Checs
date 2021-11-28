@@ -10,7 +10,7 @@ namespace Checs
 	{
 		public EntityArchetype CreateArchetype()
 		{
-			Span<int> componentTypes = stackalloc int[] { TypeRegistry.emptyTypeIndex };
+			Span<int> componentTypes = stackalloc int[] { TypeRegistry.emptyTypeIndex }; // this needs work!!!!!!
 			return CreateArchetypeInternal(componentTypes, Span<int>.Empty, 0);
 		}
 
@@ -21,11 +21,12 @@ namespace Checs
 			return CreateArchetypeInternal(componentTypes, componentSizes, componentSizes[0]);	
 		}
 
-		public EntityArchetype CreateArchetype(Span<Type> types)
+		public EntityArchetype CreateArchetype(ReadOnlySpan<Type> types)
 		{
 			if(types.Length == 0)
 				return CreateArchetype();
 			
+			// The allocation > 16 is not cool. Is it possible to avoid this?
 			Span<int> componentData = types.Length > 16
 				? new int[types.Length * 2]
 				: stackalloc int[types.Length * 2];
@@ -49,33 +50,31 @@ namespace Checs
 		internal EntityArchetype CreateArchetypeInternal(Span<int> componentTypes,
 			Span<int> componentSizes, int absoluteBlockSize)
 		{
-			int hashCode = 0;
-			for(int i = 0; i < componentTypes.Length; ++i) // Can be calculated beforehand.
-				hashCode = HashCode.Combine(hashCode, componentTypes[i]);
-			
+			int hashCode = GetComponentTypeHash(componentTypes);
+
 			if(this.archetypeStore->typeLookup.TryGet(hashCode, out EntityArchetype entityArchetype))
 				return entityArchetype;
 
-			this.archetypeStore->EnsureCapacity();
-				
 			int chunkCapacity = ChunkUtility.CalculateChunkBufferCapacity(absoluteBlockSize);
 
 			if(chunkCapacity == 0)
 				throw new ArchetypeTooLargeException(absoluteBlockSize);
 
+			this.archetypeStore->EnsureCapacity();
+
 			int index = this.archetypeStore->count++;
 
-			Archetype archetype = new Archetype(); // Rework
-			archetype.chunkArray = ArchetypeChunkArray.Allocate(&this.archetypeStore->archetypes[index]);
-			archetype.chunkCapacity = chunkCapacity;
-			archetype.entityCount = 0;
+			Archetype* archetype = this.archetypeStore->archetypes + index;
+			archetype->chunkArray = ArchetypeChunkArray.Allocate(archetype);
+			archetype->chunkCapacity = chunkCapacity;
 
-			ArchetypeUtility.ConstructComponentData(&archetype, componentTypes, componentSizes, hashCode);
+			// TODO: Move more stuff in the utility or avoid the utility. YOU DECIDE!
+			ArchetypeUtility.ConstructComponentData(archetype, componentTypes, componentSizes, hashCode);
 
 			entityArchetype = new EntityArchetype(index);
 
-			this.archetypeStore->archetypes[index] = archetype;
-			this.archetypeStore->typeLookup.Add(archetype.componentHashCode, entityArchetype);
+			// Move to seperate method that takes Archetype* as argument?
+			this.archetypeStore->typeLookup.Add(hashCode, entityArchetype);
 
 			return entityArchetype;
 		}

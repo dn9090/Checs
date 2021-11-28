@@ -28,7 +28,7 @@ namespace Checs
 				this.globalPooledChunks = ChunkPool.count;
 				this.archetypes = world.entityManager.archetypeStore->count;
 				this.archetypeCapacity = world.entityManager.archetypeStore->capacity;
-				this.entities = world.entityManager.entityStore->count;
+				this.entities = world.entityManager.entityStore->aliveCount;
 				this.entityCapacity = world.entityManager.entityStore->capacity;
 				this.freeEntitySlots = world.entityManager.entityStore->freeSlots.count;
 			}

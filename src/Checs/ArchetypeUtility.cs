@@ -9,7 +9,8 @@ namespace Checs
 		public static void ConstructComponentData(Archetype* archetype,
 			Span<int> componentTypes, Span<int> componentSizes, int hashCode)
 		{
-			archetype->componentCount = componentSizes.Length;
+			archetype->entityCount = 0;
+			archetype->componentCount = componentSizes.Length; // Temporary fix... see CreateArchetype()
 			archetype->componentHashCode = hashCode;
 
 			if(componentSizes.Length == 0)

@@ -31,6 +31,24 @@ namespace Checs
 			}
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		internal static int GetComponentTypeHash(Span<int> componentTypes)
+		{
+			int hashCode = 0;
+			for(int i = 0; i < componentTypes.Length; ++i)
+				hashCode = HashCode.Combine(hashCode, componentTypes[i]);
+			return hashCode;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		internal static int GetComponentTypeHash(int* componentTypes, int componentCount)
+		{
+			int hashCode = 0;
+			for(int i = 0; i < componentCount; ++i)
+				hashCode = HashCode.Combine(hashCode, componentTypes[i]);
+			return hashCode;
+		}
+
 		public bool HasComponentData<T>(Entity entity) where T : unmanaged, IComponentData
 		{
 			if(!IsAlive(entity))
@@ -139,37 +157,10 @@ namespace Checs
 			var chunks = archetype->chunkArray->chunks;
 			var count = 0;
 
-			fixed(T* dest = destination)
+			fixed(T* buffer = destination)
 			{
 				for(int i = 0; i < chunkCount && count < destination.Length; ++i)
-				{
-					var indexInArchetype = ArchetypeUtility.GetTypeIndex(chunks[i]->archetype, typeIndex);
-					var bufferCount = destination.Length - count;
-					var max = bufferCount < chunks[i]->count ? bufferCount : chunks[i]->count;
-					var size = max * sizeof(T);
-
-					Buffer.MemoryCopy(ChunkUtility.GetComponentPtrInBuffer<T>(chunks[i], indexInArchetype), dest + count, size, size);
-
-					count += max;
-				}
-			}
-
-			return count;
-		}
-
-		internal int CopyComponentDataInternal2<T>(Archetype* archetype, Span<T> destination, int typeIndex)  where T : unmanaged
-		{
-			var chunkCount = archetype->chunkArray->count;
-			var chunks = archetype->chunkArray->chunks;
-			var count = 0;
-
-			for(int i = 0; i < chunkCount && count < destination.Length; ++i) // This needs some work and cleanup.
-			{
-				var slice = destination.Slice(count);
-				var data = ChunkUtility.GetComponentData<T>(chunks[i], typeIndex);
-				var max = slice.Length < data.Length ? slice.Length : data.Length;
-				data.Slice(0, max).CopyTo(slice);
-				count += max;
+					count += ChunkUtility.CopyComponentData<T>(chunks[i], typeIndex, buffer + count, destination.Length - count);
 			}
 
 			return count;

@@ -235,5 +235,17 @@ namespace Checs
 
 			return new Span<T>(GetComponentPtrInBuffer<T>(chunk, indexInArchetype), chunk->count);
 		}
+
+		public static int CopyComponentData<T>(Chunk* chunk, int typeIndex, T* buffer, int count) where T : unmanaged
+		{
+			count = (count <= chunk->count) ? count : chunk->count;
+
+			var indexInArchetype = ArchetypeUtility.GetTypeIndex(chunk->archetype, typeIndex); // Make sure that the type is in the archetype beforehand...
+			var size = count * sizeof(T);
+
+			Buffer.MemoryCopy(ChunkUtility.GetComponentPtrInBuffer<T>(chunk, indexInArchetype), buffer, size, size);
+
+			return count;
+		}
 	}
 }

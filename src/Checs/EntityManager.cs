@@ -17,12 +17,17 @@ namespace Checs
 			Construct();
 			
 			// Create the empty archetype to avoid that the index
-			// of the default EntityArchetype is out of range.  
+			// of the default EntityArchetype is out of range.
 			CreateArchetype();
+
+			// Create the empty query to avoid that the index
+			// of the default EntityQuery is out of range.
+			CreateQuery();
 		}
 
 		private void Construct()
 		{
+			// Revisit with threading (cache invalidation).
 			byte* ptr = MemoryUtility.Malloc<byte>(
 				sizeof(ArchetypeStore) +
 				sizeof(EntityStore) +

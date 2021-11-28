@@ -7,6 +7,9 @@ namespace Checs
 	[StructLayout(LayoutKind.Sequential)]
 	internal unsafe struct EntityQueryCache : IDisposable
 	{
+		// Maybe rework it to a LRU cache?
+		// Sort components
+
 		public int count;
 
 		public int capacity;
@@ -34,10 +37,16 @@ namespace Checs
 
 		public void Dispose()
 		{
+			for(int i = 0; i < this.count; ++i)
+			{
+				MemoryUtility.Free(this.queries[i].componentTypes);
+				MemoryUtility.Free(this.queries[i].archetypes);
+			}
+
 			this.count = 0;
 			this.capacity = 0;
 			this.typeLookup.Dispose();
-			MemoryUtility.Free<EntityQueryData>(this.queries);
+			MemoryUtility.Free(this.queries);
 		}
 	}
 }

@@ -85,33 +85,6 @@ namespace Checs
 				buffer[i] = new Entity(this.count++, this.version);
 		}
 #else
-		public void ReserveEntityBatch(Entity* buffer, int count)
-		{
-			Span<int> slots = this.freeSlots.Recycle(count);
-
-			for(int i = 0; i < slots.Length; ++i)
-				buffer[i] = new Entity(slots[i], this.version);
-
-			var index = slots.Length;
-
-			/*if(Sse2.IsSupported)
-			{
-				Vector128<uint> data = Vector128.Create((uint)this.count, this.version, (uint)this.count + 1, this.version);
-				Vector128<uint> elem = Vector128.Create((uint)2, (uint)0, (uint)2, (uint)0);
-
-				for(; index < count - 1; index += 2)
-				{
-					Sse2.Store((uint*)(buffer + index), data);
-					data = Sse2.Add(data, elem);
-				}
-
-				this.count += (index - slots.Length);
-			}*/
-
-			while(index < count)
-				buffer[index++] = new Entity(this.count++, this.version);
-		}
-
 		public void ReserveEntityBatch(Span<Entity> buffer)
 		{
 			Span<int> slots = this.freeSlots.Recycle(buffer.Length);
@@ -124,7 +97,7 @@ namespace Checs
 			if(Sse2.IsSupported)
 			{
 				Vector128<uint> data = Vector128.Create((uint)this.count, this.version, (uint)this.count + 1, this.version);
-				Vector128<uint> elem = Vector128.Create((uint)2, (uint)0, (uint)2, (uint)0);
+				Vector128<uint> elem = Vector128.Create(2U, 0U, 2U, 0U); // Naming and stuff
 
 				fixed(Entity* ptr = buffer)
 				{

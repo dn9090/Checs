@@ -31,31 +31,31 @@ namespace Checs
 			ChunkUtility.ConstructChunk(chunk, archetype);
 			ChunkUtility.AssignSequenceNumber(chunk, nextSequenceNumber++);
 
-			rentedCount += 1;
+			++rentedCount;
 
 			return chunk;		
 		}
 
 		public static void Return(Chunk* chunk)
 		{
-			if(count > rentedCount)
+			if(count > rentedCount) // Why I've written this??
 				Free(chunk);
 			else
-				RecycleChunk(chunk);
+				Recycle(chunk);
 		}
 
 		public static void Free(Chunk* chunk)
 		{
 			MemoryUtility.Free<Chunk>(chunk);
-			rentedCount -= 1;
+			--rentedCount;
 		}
 
-		private static void RecycleChunk(Chunk* chunk)
+		private static void Recycle(Chunk* chunk)
 		{
 			EnsureCapacity();
 			
 			chunks[count++] = chunk;
-			rentedCount -= 1;
+			--rentedCount;
 		}
 
 		private static void EnsureCapacity()

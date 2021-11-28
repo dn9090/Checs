@@ -22,12 +22,12 @@ namespace Checs.Tests
 			Assert.Equal(left, right);
 
 			left = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation) });
-			right = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation) });
+			right = manager.CreateArchetype(new Type[] { typeof(Rotation), typeof(Position) });
 
 			Assert.Equal(left, right);
 
-			left = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation), typeof(Line) });
-			right = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation), typeof(Line) });
+			left = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation), typeof(Layer) });
+			right = manager.CreateArchetype(new Type[] { typeof(Layer), typeof(Position), typeof(Rotation) });
 
 			Assert.Equal(left, right);
 		}
