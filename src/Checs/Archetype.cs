@@ -17,7 +17,7 @@ namespace Checs
 
 		public int componentCount;
 
-		public int* componentTypes;
+		public int* componentTypes; // Allocate arrays in the same memory block as the archetype struct?
 
 		public int* componentSizes;
 

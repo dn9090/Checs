@@ -1,4 +1,5 @@
 using System;
+
 namespace Checs
 {
 	public readonly struct EntityQuery : IEquatable<EntityQuery>, IComparable<EntityQuery>

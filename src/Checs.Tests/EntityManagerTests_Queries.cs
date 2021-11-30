@@ -41,6 +41,38 @@ namespace Checs.Tests
 		}
 
 		[Fact]
+		public void QueriesIncludeArchetype()
+		{
+			using EntityManager manager = new EntityManager();
+
+			var archetype = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation), typeof(Velocity) });
+			var query = manager.CreateQuery(new Type[] { typeof(Position), typeof(Rotation) });
+
+			Assert.True(manager.MatchesQuery(query, archetype));
+
+			archetype = manager.CreateArchetype(new Type[] { typeof(Rotation), typeof(Velocity) });
+			query = manager.CreateQuery(new Type[] { typeof(Position), typeof(Rotation) });
+
+			Assert.False(manager.MatchesQuery(query, archetype));
+		}
+
+		[Fact]
+		public void QueriesExcludeArchetype()
+		{
+			using EntityManager manager = new EntityManager();
+
+			var archetype = manager.CreateArchetype(new Type[] { typeof(Rotation), typeof(Velocity) });
+			var query = manager.CreateQuery(Array.Empty<Type>(), new Type[] { typeof(Position) });
+
+			Assert.True(manager.MatchesQuery(query, archetype));
+
+			archetype = manager.CreateArchetype(new Type[] { typeof(Rotation), typeof(Velocity) });
+			query = manager.CreateQuery(new Type[] { typeof(Position), typeof(Rotation) });
+
+			Assert.False(manager.MatchesQuery(query, archetype));
+		}
+
+		[Fact]
 		public void SupportsALotOfQueries()
 		{
 			using EntityManager manager = new EntityManager();
@@ -80,6 +112,32 @@ namespace Checs.Tests
 				Assert.Equal(queryCount + 1, manager.queryCache->count); // These are bad tests...
 				Assert.True(manager.entityStore->capacity >= queryCount);
 			}
+		}
+
+		[Fact]
+		public void QueryBuilderIncludesTypes()
+		{
+			using EntityManager manager = new EntityManager();
+
+			var builder = new EntityQueryBuilder()
+				.Include<Position>()
+				.Include<Rotation>()
+				.Include<Velocity>();
+
+			Assert.True(builder.includeCount == 3);
+		}
+
+		[Fact]
+		public void QueryBuilderExcludesTypes()
+		{
+			using EntityManager manager = new EntityManager();
+
+			var builder = new EntityQueryBuilder()
+				.Exclude<Position>()
+				.Exclude<Rotation>()
+				.Exclude<Velocity>();
+
+			Assert.True(builder.excludeCount == 3);
 		}
 	}
 }

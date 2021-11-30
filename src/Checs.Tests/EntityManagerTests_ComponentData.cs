@@ -49,6 +49,38 @@ namespace Checs.Tests
 		}
 
 		[Fact]
+		public void ComponentDataIsSetForMultipleEntities()
+		{
+			using EntityManager manager = new EntityManager();
+
+			var entities = new Entity[1000];
+
+			var types = new Type[] { typeof(Layer), typeof(Position), typeof(Rotation), typeof(Velocity) };
+			var archetype = manager.CreateArchetype(types);
+
+			manager.CreateEntity(archetype, entities);
+			manager.SetComponentData(entities, new Layer(12345));
+
+			manager.ForEach(archetype, (batch) => {
+				for(int i = 0; i < batch.length; ++i)
+					Assert.Equal(12345, batch.GetComponentData<Layer>()[i].value);
+			});
+
+			Array.Resize(ref entities, entities.Length * 2);
+
+			var typesMissingComponent = new Type[] { typeof(Position), typeof(Rotation), typeof(Velocity) };
+			var archetypeMissingComponent = manager.CreateArchetype(types);
+
+			manager.CreateEntity(archetype, entities.AsSpan().Slice(entities.Length / 2));
+			manager.SetComponentData(entities, new Layer(54321));
+
+			manager.ForEach(archetype, (batch) => {
+				for(int i = 0; i < batch.length; ++i)
+					Assert.Equal(54321, batch.GetComponentData<Layer>()[i].value);
+			});
+		}
+
+		[Fact]
 		public void ComponentDataIsCopied()
 		{
 			using EntityManager manager = new EntityManager();

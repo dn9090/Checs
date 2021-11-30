@@ -105,7 +105,38 @@ namespace Checs
 
 		public bool SetComponentData<T>(Entity entity, in T value) where T : unmanaged, IComponentData
 		{
-			throw new NotImplementedException();
+			// Is this even needed? Does ref not already solve this?
+
+			throw new NotImplementedException(); // TODO
+		}
+
+		public int SetComponentData<T>(ReadOnlySpan<Entity> entities, T value) where T : unmanaged, IComponentData
+		{
+			int typeIndex = TypeRegistry<T>.typeIndex;
+			int index = 0;
+			int count = 0;
+
+			while(index < entities.Length)
+			{
+				var entityBatchInChunk = this.entityStore->GetFirstEntityBatchInChunk(entities.Slice(index));
+
+				index += entityBatchInChunk.count;
+
+				if(entityBatchInChunk.chunk == null || entityBatchInChunk.count == 0)
+					continue;
+
+				var ptr = ChunkUtility.GetComponentDataPtr<T>(entityBatchInChunk.chunk, entityBatchInChunk.index, typeIndex);
+
+				if(ptr == null)
+					continue;
+
+				for(int i = 0; i < entityBatchInChunk.count; ++i)
+					*(ptr + i) = value;
+
+				count += entityBatchInChunk.count;
+			}
+
+			return count;
 		}
 
 		public bool AddComponentData<T>(Entity entity) where T : unmanaged, IComponentData
