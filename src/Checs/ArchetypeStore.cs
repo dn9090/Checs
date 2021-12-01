@@ -46,7 +46,7 @@ namespace Checs
 		public void Dispose()
 		{
 			for(int i = 0; i < this.count; ++i)
-				ArchetypeChunkArray.Free(this.archetypes[i].chunkArray);
+				this.archetypes[i].Dispose();
 
 			this.count = 0;
 			this.capacity = 0;

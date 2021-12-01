@@ -15,13 +15,22 @@ namespace Checs
 
 			if(componentSizes.Length == 0)
 				return;
-			
-			archetype->componentTypes = MemoryUtility.Malloc<int>(componentTypes);
-			archetype->componentSizes = MemoryUtility.Malloc<int>(componentSizes);
-			archetype->componentOffsets = CalculateComponentOffsets(archetype, archetype->chunkCapacity);
+
+			var size = componentSizes.Length * sizeof(int);
+
+			archetype->componentTypes = (int*)MemoryUtility.Malloc(size);
+			archetype->componentSizes = (int*)MemoryUtility.Malloc(size);
+
+			fixed(int* srcTypes = componentTypes, srcSizes = componentSizes)
+			{
+				Buffer.MemoryCopy(srcTypes, archetype->componentTypes, size, size);
+				Buffer.MemoryCopy(srcSizes, archetype->componentSizes, size, size);
+			}
+
+			CalculateComponentOffsets(archetype, archetype->chunkCapacity);
 		}
 
-		public static int* CalculateComponentOffsets(Archetype* archetype, int blockSize)
+		public static void CalculateComponentOffsets(Archetype* archetype, int blockSize)
 		{
 			var count = archetype->componentCount;
 			var capacity = archetype->chunkCapacity;
@@ -31,12 +40,10 @@ namespace Checs
 
 			offsets[0] = sizeof(Entity) * capacity;
 
-			// TODO: Optimize with Vector.
-
 			for(int i = 1; i < count; ++i)
 				offsets[i] = offsets[i - 1] + (capacity * componentSizes[i - 1]);
 			
-			return offsets;
+			archetype->componentOffsets = offsets;
 		}
 
 		public static int GetTypeIndex(Archetype* archetype, int typeIndex)
@@ -53,33 +60,6 @@ namespace Checs
 			}
 
 			return -1;
-		}
-
-		public static bool MatchesComponentTypes(Archetype* archetype, Span<int> componentTypes)
-		{
-			// TODO: Optimize with Vector.
-			
-			var types = archetype->componentTypes;
-			var count = archetype->componentCount;
-
-			for(int i = 0; i < componentTypes.Length; ++i)
-			{
-				bool matches = false;
-
-				for(int k = 0; k < count; ++k)
-				{
-					if(types[k] == componentTypes[i])
-					{
-						matches = true;
-						break;
-					}
-				}
-				
-				if(!matches)
-					return false;
-			}
-
-			return true;
 		}
 	}
 }

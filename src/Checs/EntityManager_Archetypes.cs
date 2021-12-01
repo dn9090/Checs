@@ -10,15 +10,22 @@ namespace Checs
 	{
 		public EntityArchetype CreateArchetype()
 		{
-			Span<int> componentTypes = stackalloc int[] { TypeRegistry.emptyTypeIndex }; // this needs work!!!!!!
-			return CreateArchetypeInternal(componentTypes, Span<int>.Empty, 0);
+			int typeIndex = TypeRegistry.emptyTypeIndex; // Check if there is a better way.
+			return CreateArchetypeInternal(new Span<int>(&typeIndex, 1), Span<int>.Empty, 0);
+		}
+
+		public EntityArchetype CreateArchetype<T>() where T : unmanaged
+		{
+			int typeIndex = TypeRegistry<T>.typeIndex;
+			int size = sizeof(T);
+			return CreateArchetypeInternal(new Span<int>(&typeIndex, 1), new Span<int>(&size, 1), size);
 		}
 
 		public EntityArchetype CreateArchetype(Type type)
 		{
-			Span<int> componentTypes = stackalloc int[] { TypeRegistry.ToTypeIndex(type) };
-			Span<int> componentSizes = stackalloc int[] { Marshal.SizeOf(type) };
-			return CreateArchetypeInternal(componentTypes, componentSizes, componentSizes[0]);	
+			int typeIndex = TypeRegistry.ToTypeIndex(type);
+			int size = Marshal.SizeOf(type);
+			return CreateArchetypeInternal(new Span<int>(&typeIndex, 1), new Span<int>(&size, 1), size);
 		}
 
 		public EntityArchetype CreateArchetype(ReadOnlySpan<Type> types)
@@ -42,7 +49,7 @@ namespace Checs
 				blockSize += componentSizes[i];
 			}
 
-			SortComponentData(componentTypes, componentSizes);
+			SortUtility.Sort(componentTypes, componentSizes);
 
 			return CreateArchetypeInternal(componentTypes, componentSizes, blockSize);
 		}
@@ -93,78 +100,85 @@ namespace Checs
 
 		internal EntityArchetype AddTypeToArchetype<T>(Archetype* archetype) where T : unmanaged
 		{
-			var count = archetype->componentCount;
+			// TODO: Needs a check if the archetypes contains typeof(T).
 
-			if(count == 0)
-				return CreateArchetype(typeof(T));
+			var srcCount = archetype->componentCount;
 
-			int componentCount = count + 1;
-			Span<int> componentData = componentCount > 16
-				? new int[componentCount * 2]
-				: stackalloc int[componentCount * 2];
+			if(srcCount == 0)
+				return CreateArchetype<T>();
 
-			var componentTypes = componentData.Slice(0, componentCount);
-			var componentSizes = componentData.Slice(componentCount);
+			int destCount = srcCount + 1;
+			Span<int> componentData = destCount > 16
+				? new int[destCount * 2]
+				: stackalloc int[destCount * 2];
 
-			var sourceTypes = new Span<int>(archetype->componentTypes, count);
-			var sourceSizes = new Span<int>(archetype->componentSizes, count);
+			var destTypes = componentData.Slice(0, destCount);
+			var destSizes = componentData.Slice(destCount);
 
-			sourceTypes.CopyTo(componentTypes);
-			sourceSizes.CopyTo(componentSizes);
+			var sourceTypes = new Span<int>(archetype->componentTypes, srcCount);
+			var sourceSizes = new Span<int>(archetype->componentSizes, srcCount);
 
-			componentTypes[count] = TypeRegistry<T>.typeIndex;
-			componentSizes[count] = sizeof(T);
+			sourceTypes.CopyTo(destTypes);
+			sourceSizes.CopyTo(destSizes);
 
-			SortComponentData(componentTypes, componentSizes);
+			destTypes[srcCount] = TypeRegistry<T>.typeIndex;
+			destSizes[srcCount] = sizeof(T);
+
+			// Sometimes the added type is a new type, therefore the typeIndex is
+			// higher than the indices in the array. In this case skip the sorting.
+			if(destTypes[srcCount] < destTypes[srcCount - 1])
+				SortUtility.Sort(destTypes, destSizes);
 
 			int blockSize = 0;
 
-			for(int i = 0; i < componentSizes.Length; ++i)
-				blockSize += componentSizes[i];
+			for(int i = 0; i < destSizes.Length; ++i)
+				blockSize += destSizes[i];
 
-			return CreateArchetypeInternal(componentTypes, componentSizes, blockSize);
+			return CreateArchetypeInternal(destTypes, destSizes, blockSize);
 		}
 
 		internal EntityArchetype RemoveTypeFromArchetype<T>(Archetype* archetype) where T : unmanaged
 		{
-			int count = archetype->componentCount;
+			// TODO: Needs a check if the archetypes contains typeof(T).
+
+			int srcCount = archetype->componentCount;
 			
-			if(count <= 1)
+			if(srcCount <= 1)
 				return CreateArchetype();
 
-			int componentCount = count - 1;
-			Span<int> componentData = componentCount > 16
-				? new int[componentCount * 2]
-				: stackalloc int[componentCount * 2];
+			int destCount = srcCount - 1;
+			Span<int> componentData = destCount > 16
+				? new int[destCount * 2]
+				: stackalloc int[destCount * 2];
 
-			var componentTypes = componentData.Slice(0, componentCount);
-			var componentSizes = componentData.Slice(componentCount);
+			var destTypes = componentData.Slice(0, destCount);
+			var destSizes = componentData.Slice(destCount);
 
-			var sourceTypes = new Span<int>(archetype->componentTypes, count);
-			var sourceSizes = new Span<int>(archetype->componentSizes, count);
+			var sourceTypes = new Span<int>(archetype->componentTypes, srcCount);
+			var sourceSizes = new Span<int>(archetype->componentSizes, srcCount);
 
-			int index = ArchetypeUtility.GetTypeIndex(archetype, TypeRegistry<T>.typeIndex);
+			int indexInArchetype = ArchetypeUtility.GetTypeIndex(archetype, TypeRegistry<T>.typeIndex);
 
-			// REVIEW: Is it somehow possible to remove the branches here?
+			// Is it somehow possible to remove the branches here?
 			
-			if(index > 0)
+			if(indexInArchetype > 0)
 			{
-				sourceTypes.Slice(0, index).CopyTo(componentTypes);
-				sourceSizes.Slice(0, index).CopyTo(componentSizes);
+				sourceTypes.Slice(0, indexInArchetype).CopyTo(destTypes);
+				sourceSizes.Slice(0, indexInArchetype).CopyTo(destSizes);
 			}
 			
-			if(index < componentCount)
+			if(indexInArchetype < destCount)
 			{
-				sourceTypes.Slice(index + 1).CopyTo(componentTypes.Slice(index));
-				sourceSizes.Slice(index + 1).CopyTo(componentSizes.Slice(index));
+				sourceTypes.Slice(indexInArchetype + 1).CopyTo(destTypes.Slice(indexInArchetype));
+				sourceSizes.Slice(indexInArchetype + 1).CopyTo(destSizes.Slice(indexInArchetype));
 			}
 
 			int blockSize = 0;
 
-			for(int i = 0; i < componentSizes.Length; ++i)
-				blockSize += componentSizes[i];
+			for(int i = 0; i < destSizes.Length; ++i)
+				blockSize += destSizes[i];
 
-			return CreateArchetypeInternal(componentTypes, componentSizes, blockSize);
+			return CreateArchetypeInternal(destTypes, destSizes, blockSize);
 		}
 	}
 }

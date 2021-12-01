@@ -1,6 +1,8 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 using System.Threading;
 
 namespace Checs
@@ -12,25 +14,6 @@ namespace Checs
 
 	public unsafe partial class EntityManager
 	{
-		internal static void SortComponentData(Span<int> componentTypes, Span<int> componentSizes)
-		{
-			for(int i = 1; i < componentTypes.Length; ++i)
-			{
-				var type = componentTypes[i];
-				var size = componentSizes[i];
-				var index = i;
-
-				for(; index > 0 && type.CompareTo(componentTypes[index - 1]) <= 0; --index)
-				{
-					componentTypes[index] = componentTypes[index - 1];
-					componentSizes[index] = componentSizes[index - 1];
-				}
-					
-				componentTypes[index] = type;
-				componentSizes[index] = size;
-			}
-		}
-
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		internal static int GetComponentTypeHash(Span<int> componentTypes)
 		{
@@ -113,8 +96,7 @@ namespace Checs
 		public int SetComponentData<T>(ReadOnlySpan<Entity> entities, T value) where T : unmanaged, IComponentData
 		{
 			int typeIndex = TypeRegistry<T>.typeIndex;
-			int index = 0;
-			int count = 0;
+			int index = 0, count = 0;
 
 			while(index < entities.Length)
 			{
@@ -131,7 +113,7 @@ namespace Checs
 					continue;
 
 				for(int i = 0; i < entityBatchInChunk.count; ++i)
-					*(ptr + i) = value;
+					ptr[i] = value;
 
 				count += entityBatchInChunk.count;
 			}

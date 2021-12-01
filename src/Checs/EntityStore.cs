@@ -103,7 +103,7 @@ namespace Checs
 				{
 					for(; index < buffer.Length - 1; index += 2)
 					{
-						Sse2.Store((uint*)(ptr + index), data);
+						Sse2.Store((uint*)(ptr + index), data); // Stream integers should also work...?
 						data = Sse2.Add(data, elem);
 					}
 				}
@@ -127,7 +127,7 @@ namespace Checs
 			int indexInChunk = baseEntityInChunk.index;
 			int count = 1;
 
-			for(; count < entities.Length; ++count) // Vector???
+			for(; count < entities.Length; ++count)
 			{
 				var entity = entities[count];
 				var entityInChunk = this.entitiesInChunk[entity.index];

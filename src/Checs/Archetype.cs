@@ -5,7 +5,7 @@ using System.Threading;
 namespace Checs
 {
 	[StructLayout(LayoutKind.Sequential)]
-	internal unsafe struct Archetype
+	internal unsafe struct Archetype : IDisposable
 	{
 		public ArchetypeChunkArray* chunkArray;
 
@@ -22,5 +22,17 @@ namespace Checs
 		public int* componentSizes;
 
 		public int* componentOffsets;
+
+		public void Dispose()
+		{
+			ArchetypeChunkArray.Free(chunkArray);
+
+			if(componentCount > 0)
+			{
+				MemoryUtility.Free(componentTypes);
+				MemoryUtility.Free(componentSizes);
+				MemoryUtility.Free(componentOffsets);
+			}
+		}
 	}
 }

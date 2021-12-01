@@ -30,8 +30,10 @@ namespace Checs
 		{
 			T* dest = Malloc<T>(source.Length);
 
+			var size = source.Length * sizeof(T);
+
 			fixed(T* ptr = source)
-				Unsafe.CopyBlock((void*)dest, (void*)ptr, (uint)(source.Length * sizeof(T)));
+				Buffer.MemoryCopy((void*)ptr, (void*)dest, size, size);
 
 			return dest;
 		}

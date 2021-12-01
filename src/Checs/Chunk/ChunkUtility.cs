@@ -32,6 +32,12 @@ namespace Checs
 			int blockSizeWithEntity = blockSize + sizeof(Entity);
 			return Chunk.BufferSize / blockSizeWithEntity;
 		}
+
+		public static int CalculateBlockSize(int chunkCapacity) // Test, then implement in AddTypeToArchetype, RemoveTypeFromArchetype
+		{
+			int blockSizeWithEntity = Chunk.BufferSize / chunkCapacity;
+			return blockSizeWithEntity - sizeof(Entity);
+		}
 		
 		public static void InitializeComponentData(Chunk* chunk, int index, int count)
 		{
