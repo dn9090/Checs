@@ -47,7 +47,9 @@ namespace Checs
 			for(int i = 0; i < excludeTypes.Length; ++i)
 				types[i + includeTypes.Length] = TypeRegistry.ToTypeIndex(excludeTypes[i]);
 
-			// TODO: Sort types.
+			SortUtility.Sort(types.Slice(0, includeTypes.Length));
+			SortUtility.Sort(types.Slice(includeTypes.Length));
+			
 			// TODO: Same as archetypes: Allow only distinct types.
 
 			return CreateQueryInternal(types, includeTypes.Length, excludeTypes.Length);

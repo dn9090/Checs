@@ -6,17 +6,24 @@ namespace Checs.Tests
 {
 	public partial class EntityManagerTests
 	{
-		// [Fact] Fails
+		[Fact]
 		public void QueriesAreEqual()
 		{
 			using EntityManager manager = new EntityManager();
 
 			Assert.Equal(manager.CreateQuery(), manager.CreateQuery());
 
-			var left = manager.CreateQuery(new Type[] { typeof(Position), typeof(Rotation) });
-			var right = manager.CreateQuery(new Type[] { typeof(Rotation), typeof(Position) });
+			var leftOnlyInclude = manager.CreateQuery(new Type[] { typeof(Position), typeof(Rotation), typeof(Velocity) });
+			var rightOnlyInclude = manager.CreateQuery(new Type[] { typeof(Velocity), typeof(Rotation), typeof(Position) });
 
-			Assert.Equal(left, right);
+			Assert.Equal(leftOnlyInclude, rightOnlyInclude);
+
+			var leftWithExclude = manager.CreateQuery(new Type[] { typeof(Position) },
+				new Type[] { typeof(Rotation), typeof(Velocity) });
+			var rightWithExclude = manager.CreateQuery(new Type[] { typeof(Position) },
+				new Type[] { typeof(Velocity), typeof(Rotation) });
+
+			Assert.Equal(leftWithExclude, rightWithExclude);
 		}
 
 		[Fact]
