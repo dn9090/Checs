@@ -16,6 +16,7 @@ namespace Checs
 		{
 			var queryData = GetUpdatedQueryData(query);
 			
+			// TODO: Skip archetypes that have zero entities.
 			for(int i = 0; i < queryData->archetypeCount; ++i)
 				ForEachInternal(queryData->archetypes[i], action);
 		}

@@ -48,6 +48,10 @@ namespace Checs
 			// fixed statement in the SSE branch is eleminated, as well as (possibly) the
 			// ArgumentOutOfRange checks.
 
+			// Because the count of entities and the entity size (with components) is known,
+			// it should be possible to reserve the chunks beforehand, not allocating them
+			// one by one in GetChunkWithEmptySlots().
+
 			fixed(Entity* ptr = entities)
 			{
 				while(allocatedEntityCount < entities.Length)

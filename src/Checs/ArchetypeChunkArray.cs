@@ -4,6 +4,11 @@ using System.Runtime.InteropServices;
 
 namespace Checs
 {
+	// TODO: Looking at it again, this thing needs a lot of work.
+	// Maybe move the methods to the ArchetypeUtility and implement
+	// IDisposable.
+	// Also add API's for requesting multiple chunks.
+
 	[StructLayout(LayoutKind.Sequential)]
 	internal unsafe struct ArchetypeChunkArray
 	{

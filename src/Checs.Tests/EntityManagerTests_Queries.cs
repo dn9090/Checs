@@ -122,6 +122,28 @@ namespace Checs.Tests
 		}
 
 		[Fact]
+		public void DefaultQueryMatchesAllEntities()
+		{
+			using EntityManager manager = new EntityManager();
+
+			var entities = new Entity[100000];
+
+			var archetype1 = manager.CreateArchetype(new Type[] { typeof(Position) });
+			var archetype2 = manager.CreateArchetype(new Type[] { typeof(Rotation) });
+			var archetype3 = manager.CreateArchetype(new Type[] { typeof(Velocity) });
+			var archetype4 = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation), typeof(Velocity) });
+
+			manager.CreateEntity(entities.AsSpan().Slice(0, 20000));
+			manager.CreateEntity(archetype1, entities.AsSpan().Slice(20000, 20000));
+			manager.CreateEntity(archetype2, entities.AsSpan().Slice(40000, 20000));
+			manager.CreateEntity(archetype3, entities.AsSpan().Slice(60000, 20000));
+			manager.CreateEntity(archetype4, entities.AsSpan().Slice(80000, 20000));
+
+			Assert.Equal(entities.Length, manager.GetEntityCount(new EntityQuery()));
+			Assert.Equal(entities.Length, manager.GetEntityCount(manager.CreateQuery()));
+		}
+
+		[Fact]
 		public void QueryBuilderIncludesTypes()
 		{
 			using EntityManager manager = new EntityManager();

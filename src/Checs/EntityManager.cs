@@ -4,6 +4,18 @@ using System.Threading;
 
 namespace Checs
 {
+	// TODOs:
+	// [ ] Rework the query matching algorithm.
+	// [ ] Query and archetype component types need to be distinct.
+	// [ ] Better free heuristics for ChunkPool.
+	// [ ] Allocate / recycle multiple chunks for batch processing like CreateEntities(1000000).
+	// [ ] (API like GetMaxEntitiesPerBatchCount(EntityArchetype archetype))
+	// [ ] Cleanup EntityManager, HashMap and Archetype initialization.
+	// [ ] Keep track of structural changes.
+	// [ ] ChunkPool needs to be thread-safe.
+	// [ ] TypeRegistry needs to be thread-safe.
+	// [ ] Generate public API for World?
+
 	public unsafe partial class EntityManager : IDisposable
 	{
 		internal ArchetypeStore* archetypeStore;

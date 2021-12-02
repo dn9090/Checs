@@ -28,7 +28,7 @@ namespace Checs
 		public static Chunk* Rent(Archetype* archetype)
 		{
 			Chunk* chunk = count > 0 ? chunks[--count] : ChunkUtility.AllocateChunk();
-			ChunkUtility.ConstructChunk(chunk, archetype);
+			ChunkUtility.ConstructChunk(chunk, archetype); // Mh, should this be done here?
 			ChunkUtility.AssignSequenceNumber(chunk, nextSequenceNumber++);
 
 			++rentedCount;
