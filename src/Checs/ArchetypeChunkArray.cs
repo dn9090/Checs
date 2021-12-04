@@ -5,12 +5,11 @@ using System.Runtime.InteropServices;
 namespace Checs
 {
 	// TODO: Looking at it again, this thing needs a lot of work.
-	// Maybe move the methods to the ArchetypeUtility and implement
-	// IDisposable.
-	// Also add API's for requesting multiple chunks.
+	// Maybe move the methods to the ArchetypeUtility and
+	// also add API's for requesting multiple chunks.
 
 	[StructLayout(LayoutKind.Sequential)]
-	internal unsafe struct ArchetypeChunkArray
+	internal unsafe struct ArchetypeChunkArray : IDisposable
 	{
 		public Archetype* archetype;
 
@@ -29,17 +28,6 @@ namespace Checs
 			array->chunks = MemoryUtility.MallocPtrArray<Chunk>(array->capacity);
 
 			return array;
-		}
-
-		public static void Free(ArchetypeChunkArray* chunkArray)
-		{
-			var count = chunkArray->count;
-
-			for(int i = 0; i < count; ++i)
-				ChunkPool.Free(chunkArray->chunks[i]);
-			
-			MemoryUtility.Free(chunkArray->chunks);
-			MemoryUtility.Free<ArchetypeChunkArray>(chunkArray);
 		}
 
 		public Chunk* CreateChunk()
@@ -74,13 +62,21 @@ namespace Checs
 			return CreateChunk();
 		}
 
-		private void EnsureCapacity()
+		public void EnsureCapacity()
 		{
 			if(this.count == this.capacity)
 			{
 				this.capacity = this.capacity * 2;
 				this.chunks = MemoryUtility.ReallocPtrArray(this.chunks, this.capacity);
 			}
+		}
+
+		public void Dispose()
+		{
+			for(int i = 0; i < this.count; ++i)
+				ChunkPool.Free(this.chunks[i]);
+			
+			MemoryUtility.Free(this.chunks);
 		}
 	}
 }
