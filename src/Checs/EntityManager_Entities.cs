@@ -113,7 +113,7 @@ namespace Checs
 
 				index += entityBatchInChunk.count;
 
-				if(entityBatchInChunk.chunk == null || entityBatchInChunk.count == 0)
+				if(entityBatchInChunk.chunk == null)
 					continue;
 
 				this.entityStore->DestroyEntityBatchInChunk(entityBatchInChunk);

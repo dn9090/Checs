@@ -32,7 +32,7 @@ namespace Checs
 			var count = archetype->componentCount;
 			var componentSizes = archetype->componentSizes;
 
-			int* offsets = MemoryUtility.Malloc<int>(count);
+			int* offsets = MemoryUtility.Malloc<int>(count); // This can be done in ConstructComponentData.
 
 			offsets[0] = sizeof(Entity) * chunkCapacity;
 
