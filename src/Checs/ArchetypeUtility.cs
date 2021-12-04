@@ -1,6 +1,5 @@
 using System;
 using System.Runtime.InteropServices;
-using System.Threading;
 
 namespace Checs
 {
@@ -26,22 +25,19 @@ namespace Checs
 				Buffer.MemoryCopy(srcTypes, archetype->componentTypes, size, size);
 				Buffer.MemoryCopy(srcSizes, archetype->componentSizes, size, size);
 			}
-
-			CalculateComponentOffsets(archetype, archetype->chunkCapacity);
 		}
 
-		public static void CalculateComponentOffsets(Archetype* archetype, int blockSize)
+		public static void CalculateComponentOffsets(Archetype* archetype, int chunkCapacity)
 		{
 			var count = archetype->componentCount;
-			var capacity = archetype->chunkCapacity;
 			var componentSizes = archetype->componentSizes;
 
 			int* offsets = MemoryUtility.Malloc<int>(count);
 
-			offsets[0] = sizeof(Entity) * capacity;
+			offsets[0] = sizeof(Entity) * chunkCapacity;
 
 			for(int i = 1; i < count; ++i)
-				offsets[i] = offsets[i - 1] + (capacity * componentSizes[i - 1]);
+				offsets[i] = offsets[i - 1] + (chunkCapacity * componentSizes[i - 1]);
 			
 			archetype->componentOffsets = offsets;
 		}

@@ -72,11 +72,13 @@ namespace Checs
 			int index = this.archetypeStore->count++;
 
 			Archetype* archetype = this.archetypeStore->archetypes + index;
-			archetype->chunkArray = ArchetypeChunkArray.Allocate(archetype);
-			archetype->chunkCapacity = chunkCapacity;
 
 			// TODO: Move more stuff in the utility or avoid the utility. YOU DECIDE!
 			ArchetypeUtility.ConstructComponentData(archetype, componentTypes, componentSizes, hashCode);
+			ArchetypeUtility.CalculateComponentOffsets(archetype, chunkCapacity);
+
+			archetype->chunkArray = ArchetypeChunkArray.Allocate(archetype);
+			archetype->chunkCapacity = chunkCapacity;
 
 			entityArchetype = new EntityArchetype(index);
 
@@ -131,7 +133,7 @@ namespace Checs
 
 			int blockSize = 0;
 
-			for(int i = 0; i < destSizes.Length; ++i)
+			for(int i = 0; i < destSizes.Length; ++i) // TODO: Use CalculateBlockSize instead.
 				blockSize += destSizes[i];
 
 			return CreateArchetypeInternal(destTypes, destSizes, blockSize);
@@ -175,7 +177,7 @@ namespace Checs
 
 			int blockSize = 0;
 
-			for(int i = 0; i < destSizes.Length; ++i)
+			for(int i = 0; i < destSizes.Length; ++i) // TODO: Use CalculateBlockSize instead.
 				blockSize += destSizes[i];
 
 			return CreateArchetypeInternal(destTypes, destSizes, blockSize);
