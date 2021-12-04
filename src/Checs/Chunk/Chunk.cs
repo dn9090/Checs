@@ -27,6 +27,8 @@ namespace Checs
 
 		public const int ChunkSize = 16 * 1024;
 
-		public const int BufferSize = ChunkSize - 64;
+		public const int HeaderSize = 64;
+
+		public const int BufferSize = ChunkSize - HeaderSize;
 	}
 }

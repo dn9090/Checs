@@ -253,5 +253,71 @@ namespace Checs
 
 			return count;
 		}
+
+		public static byte[] GenerateChunkImage(Chunk* chunk)
+		{
+			const int  TGA_HEADER_SIZE      = 18;
+			const int  TGA_CHANNELS         = 3;
+			const byte TGA_RGB_UNCOMPRESSED = 2;
+			const byte TGA_CHANNEL_BITS     = 24;
+
+			var size = (int)Math.Sqrt(Chunk.ChunkSize);
+			var tga = new byte[TGA_HEADER_SIZE + size * size * TGA_CHANNELS];
+
+			tga[2]  = TGA_RGB_UNCOMPRESSED;
+			tga[12] = (byte)(255 & size);
+			tga[13] = (byte)(255 & (size >> 8));
+			tga[14] = (byte)(255 & size);
+			tga[15] = (byte)(255 & (size >> 8));
+			tga[16] = TGA_CHANNEL_BITS;
+			// tga[17] = 32; // TODO
+
+			var pixels = tga.AsSpan().Slice(TGA_HEADER_SIZE);
+
+			var archetype = chunk->archetype;
+			var index = 0;
+
+			while(index < Chunk.HeaderSize * TGA_CHANNELS)
+			{
+				pixels[index++] = 0;
+				pixels[index++] = 0;
+				pixels[index++] = 255;
+			}
+
+			for(int i = 0; i < chunk->count; ++i)
+			{
+				var contrast = 55 * (i % 2);
+
+				for(int j = 0; j < sizeof(Entity); ++j)
+				{
+					pixels[index++] = (byte)(255 - contrast);
+					pixels[index++] = 0;
+					pixels[index++] = 0;
+				}
+			}
+
+			// TODO: Fill black until the next component offset is reached.
+
+			for(int c = 0; c < archetype->componentCount; ++c)
+			{
+				var color = (byte)(55 + (float)(200f / (float)archetype->componentCount) * c);
+
+				for(int i = 0; i < chunk->count; ++i)
+				{
+					var contrast = 25 * (i % 2);
+
+					for(int j = 0; j < archetype->componentSizes[c]; ++j)
+					{
+						var grey = (byte)(color - contrast);
+						
+						pixels[index++] = grey;
+						pixels[index++] = grey;
+						pixels[index++] = grey;
+					}
+				}
+			}
+
+			return tga;
+		}
 	}
 }
