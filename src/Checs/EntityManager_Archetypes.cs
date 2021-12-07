@@ -84,7 +84,7 @@ namespace Checs
 
 			// Move to seperate method that takes Archetype* as argument?
 			this.archetypeStore->typeLookup.Add(hashCode, entityArchetype);
-
+			
 			return entityArchetype;
 		}
 
@@ -98,7 +98,7 @@ namespace Checs
 			this.entityStore->GetChunk(entity)->archetype;
 
 		internal Archetype* GetArchetypeInternal(EntityArchetype archetype) =>
-			&this.archetypeStore->archetypes[archetype.index];
+			this.archetypeStore->archetypes + archetype.index;
 
 		internal EntityArchetype AddTypeToArchetype<T>(Archetype* archetype) where T : unmanaged
 		{

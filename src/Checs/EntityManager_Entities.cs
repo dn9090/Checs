@@ -45,7 +45,7 @@ namespace Checs
 			
 			// This needs investigation: For some reason calling the ReserveEntityBatch
 			// with the Span is faster than with the pointer..., even though the entire
-			// fixed statement in the SSE branch is eleminated, as well as (possibly) the
+			// fixed statement in the SSE branch is eliminated, as well as (possibly) the
 			// ArgumentOutOfRange checks.
 
 			// Because the count of entities and the entity size (with components) is known,
@@ -54,6 +54,9 @@ namespace Checs
 
 			fixed(Entity* ptr = entities)
 			{
+				// TODO: If the size of the entities is larger than a chunk allocating a chunk directly to
+				// avoid fragmenting the entities to separate chunks with GetChunkWithEmptySlots may be better.
+
 				while(allocatedEntityCount < entities.Length)
 				{
 					Chunk* chunk = archetype->chunkArray->GetChunkWithEmptySlots(ref chunkIndexInArray);
@@ -97,11 +100,7 @@ namespace Checs
 			}
 		}
 
-		public void DestroyEntity(Entity entity)
-		{
-			Span<Entity> entities = stackalloc Entity[] { entity };
-			DestroyEntity(entities); // Rework
-		}
+		public void DestroyEntity(Entity entity) => DestroyEntity(new ReadOnlySpan<Entity>(&entity, 1)); // Better but the loop can be skipped.
 
 		public void DestroyEntity(ReadOnlySpan<Entity> entities)
 		{

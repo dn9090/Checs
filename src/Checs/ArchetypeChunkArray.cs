@@ -46,6 +46,11 @@ namespace Checs
 			ChunkPool.Return(chunk);
 		}
 
+		// TODO: What if the chunk array gets sorted for calls like GetChunkWithEmptySlots?
+		// The chunks with the most empty slots are at Length - 1 (or 0).
+		// Now a simple if((chunks[i].capacity - chunks[i]) > 0) with --i can solve a lot
+		// of things more efficently.
+
 		public Chunk* GetChunkWithEmptySlots(ref int index)
 		{
 			for(int i = index; i < this.count; ++i)
@@ -58,6 +63,34 @@ namespace Checs
 			}
 
 			index = count;
+
+			return CreateChunk();
+		}
+
+		public Chunk* GetChunkWithEmptySlots(int count)
+		{
+			// Less efficent than GetChunkWithEmptySlots(ref int index) for small counts,
+			// but it actually tries to store the entities together in one chunk.
+
+			var indexWithMostEmptySlots = 0;
+			var emptySlots = 0;
+
+			for(int i = 0; i < this.count; ++i)
+			{
+				var emptyChunkSlots = this.chunks[i]->capacity - this.chunks[i]->count;
+
+				if(emptyChunkSlots >= count)
+					return this.chunks[i];
+
+				if(emptyChunkSlots >= emptySlots)
+				{
+					emptySlots = emptyChunkSlots;
+					indexWithMostEmptySlots = i;
+				}
+			}
+			
+			if(emptySlots > 0)
+				return this.chunks[indexWithMostEmptySlots];
 
 			return CreateChunk();
 		}

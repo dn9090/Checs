@@ -60,6 +60,7 @@ namespace Checs
 			Chunk* chunk = archetype->chunkArray->GetChunkWithEmptySlots(ref chunkIndex);
 			int indexInChunk = chunk->count;
 
+			// TODO: This is bad. Remove the legacy stuff and reimplement this to work on batches.
 			Span<Entity> allocated = ChunkUtility.AllocateEntities_LEGACY(chunk, 1);
 			allocated[0] = entity;
 
@@ -146,6 +147,43 @@ namespace Checs
 			}
 
 			return new EntityBatchInChunk(chunk, indexInChunk, count);
+		}
+
+		public void MoveEntityBatchInChunkToArchetype(EntityBatchInChunk entityBatchInChunk, Archetype* archetype)
+		{
+			var count = entityBatchInChunk.count;
+
+			while(count > 0)
+			{
+				Chunk* chunk = archetype->chunkArray->GetChunkWithEmptySlots(count);
+
+				var allocatedCount = 1;
+				// ChunkUtility.AllocateEntities(chunk, ...) is overkill here.
+
+				count -= allocatedCount;
+			}
+
+			
+
+
+
+
+			/*
+			var entityInChunk = this.entitiesInChunk[entity.index];
+			var chunkIndex = 0;
+
+			Chunk* chunk = archetype->chunkArray->GetChunkWithEmptySlots(ref chunkIndex);
+			int indexInChunk = chunk->count;
+
+			// TODO: This is bad. Remove the legacy stuff and reimplement this to work on batches.
+			Span<Entity> allocated = ChunkUtility.AllocateEntities_LEGACY(chunk, 1);
+			allocated[0] = entity;
+
+			ChunkUtility.CopyComponentData(entityInChunk.chunk, chunk, entityInChunk.index, indexInChunk);
+			ChunkUtility.PatchEntityData(entityInChunk.chunk, entityInChunk.index, 1);
+
+			this.entitiesInChunk[entity.index] = new EntityInChunk(chunk, indexInChunk, entityInChunk.version);
+			*/
 		}
 
 		public void DestroyEntityBatchInChunk(EntityBatchInChunk entityBatchInChunk)

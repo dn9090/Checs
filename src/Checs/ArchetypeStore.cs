@@ -43,6 +43,8 @@ namespace Checs
 			return count;
 		}
 
+		public int GetArchetypeIndex(Archetype* archetype) => (int)(archetype - this.archetypes);
+
 		public void Dispose()
 		{
 			for(int i = 0; i < this.count; ++i)

@@ -276,7 +276,7 @@ namespace Checs
 			var archetype = chunk->archetype;
 			var index = 0;
 
-			while(index < Chunk.HeaderSize * TGA_CHANNELS)
+			for(int i = 0; i < Chunk.HeaderSize; ++i)
 			{
 				pixels[index++] = 0;
 				pixels[index++] = 0;
@@ -295,23 +295,23 @@ namespace Checs
 				}
 			}
 
-			// TODO: Fill black until the next component offset is reached.
+			index = Chunk.HeaderSize * TGA_CHANNELS;
 
 			for(int c = 0; c < archetype->componentCount; ++c)
 			{
 				var color = (byte)(55 + (float)(200f / (float)archetype->componentCount) * c);
+				var offset = index + (archetype->componentOffsets[c] * TGA_CHANNELS);
 
 				for(int i = 0; i < chunk->count; ++i)
 				{
-					var contrast = 25 * (i % 2);
+					var contrast = 20 * (i % 2);
+					var grey = (byte)(color - contrast);
 
 					for(int j = 0; j < archetype->componentSizes[c]; ++j)
 					{
-						var grey = (byte)(color - contrast);
-						
-						pixels[index++] = grey;
-						pixels[index++] = grey;
-						pixels[index++] = grey;
+						pixels[offset++] = grey;
+						pixels[offset++] = grey;
+						pixels[offset++] = grey;
 					}
 				}
 			}
