@@ -1,7 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Threading;
+using System.Runtime.CompilerServices;
 
 namespace Checs
 {
@@ -12,48 +11,40 @@ namespace Checs
 
 		public int capacity;
 
-		public HashMap<EntityArchetype> typeLookup;
+		public Archetype** archetypes;
 
-		public Archetype* archetypes;
-
-		public static void Construct(ArchetypeStore* store)
+		public ArchetypeStore(int initialCapacity)
 		{
-			store->typeLookup = HashMap<EntityArchetype>.Empty();
-			store->count = 0;
-			store->capacity = store->typeLookup.capacity;
-			store->archetypes = MemoryUtility.Malloc<Archetype>(store->capacity);
+			this.count = 0;
+			this.capacity = initialCapacity;
+			this.archetypes = (Archetype**)Allocator.Alloc(sizeof(Archetype*) * this.capacity);
 		}
 
-		public void EnsureCapacity()
+		public Archetype* Aquire(int size)
 		{
 			if(this.count == this.capacity)
 			{
 				this.capacity = this.capacity * 2;
-				this.archetypes = MemoryUtility.Realloc(archetypes, this.capacity);
+				this.archetypes = (Archetype**)Allocator.Realloc(this.archetypes, sizeof(Archetype*) * this.capacity);
 			}
+
+			var index = this.count++;
+
+			this.archetypes[index] = (Archetype*)Allocator.AlignedAlloc(Archetype.Size + size, Archetype.Alignment);
+			this.archetypes[index]->index = index;
+
+			return this.archetypes[index];
 		}
-
-		public int GetChunkCount()
-		{
-			int count = 0;
-
-			for(int i = 0; i < this.count; ++i)
-				count += archetypes[i].chunkArray->count;
-			
-			return count;
-		}
-
-		public int GetArchetypeIndex(Archetype* archetype) => (int)(archetype - this.archetypes);
 
 		public void Dispose()
-		{
+		{			
 			for(int i = 0; i < this.count; ++i)
-				this.archetypes[i].Dispose();
+			{
+				this.archetypes[i]->Dispose();
+				Allocator.AlignedFree(this.archetypes[i]);
+			}
 
-			this.count = 0;
-			this.capacity = 0;
-			this.typeLookup.Dispose();
-			MemoryUtility.Free<Archetype>(this.archetypes);
+			Allocator.Free(this.archetypes);
 		}
 	}
 }

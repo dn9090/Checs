@@ -9,7 +9,7 @@ namespace Checs
 	{
 		public Chunk* chunk;
 	
-		public int index;
+		public int index; // we dont care if the entity is destroyed, so reuse that as next value
 
 		public uint version;
 

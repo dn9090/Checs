@@ -1,49 +1,65 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Checs
 {
+	[StructLayout(LayoutKind.Sequential)]
+	internal struct TypeInfo
+	{
+		public uint hashCode;
+
+		public int size;
+
+		public Type type;
+	}
+
 	internal static class TypeRegistry
 	{
-		public static readonly int emptyTypeIndex = 0;
+		public static Dictionary<uint, TypeInfo> infos = new Dictionary<uint, TypeInfo>(16);
 
-		public static int typeCount;
-
-		private static Dictionary<Type, int> s_TypeToIndex;
-
-		private static Type[] s_IndexToType;
-
-		static TypeRegistry()
+		public static TypeInfo GetTypeInfo<T>()
 		{
-			typeCount = 1;
-			s_TypeToIndex = new Dictionary<Type, int>();
-			s_IndexToType = new Type[8];
+			var type = typeof(T);
+			var hashCode = TypeUtility.GetHashCode(type);
+
+			if(infos.TryGetValue(hashCode, out TypeInfo info))
+				return info;
+			
+			info = new TypeInfo
+			{
+				hashCode = hashCode,
+				size = Unsafe.SizeOf<T>(),
+				type = type
+			};
+
+			infos.Add(hashCode, info);
+
+			return info;
 		}
-	
-		public static int ToTypeIndex(Type type)
+		
+		public static TypeInfo GetTypeInfo(uint hashCode)
 		{
-			if(s_TypeToIndex.TryGetValue(type, out int typeIndex))
-				return typeIndex;
+			if(infos.TryGetValue(hashCode, out TypeInfo info))
+				return info;
 
-			int count = typeCount;
-			typeCount += 1;
+			return default;
+		}
 
-			s_TypeToIndex.Add(type, count);
+		public static unsafe int GetTypes(uint* hashCodes, int count, Span<Type> types)
+		{
+			count = types.Length < count ? types.Length : count;
 
-			if(count == s_IndexToType.Length)
-				Array.Resize(ref s_IndexToType, s_IndexToType.Length * 2);
-
-			s_IndexToType[count]= type;
+			for(int i = 0; i < count; ++i)
+				types[i] = GetTypeInfo(*hashCodes++).type;
 
 			return count;
 		}
-
-		public static Type ToType(int typeIndex) => s_IndexToType[typeIndex];
 	}
 
 	internal static class TypeRegistry<T>
 	{
-		public static readonly int typeIndex = TypeRegistry.ToTypeIndex(typeof(T));
+		public static TypeInfo info = TypeRegistry.GetTypeInfo<T>();
 	}
 }

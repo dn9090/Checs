@@ -1,182 +1,479 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Threading;
 
 namespace Checs
 {
-	// TODO: Block structural changes in query.
-
 	public unsafe partial class EntityManager
 	{
-		public Entity CreateEntity() => CreateEntity(CreateArchetype());
+		/// <summary>
+		/// Creates an empty entity.
+		/// </summary>
+		/// <returns>The created entity.</returns>
+		public Entity CreateEntity() 
+		{
+			return CreateEntity(EntityArchetype.Empty);
+		}
 
+		/// <summary>
+		/// Creates an entity having the specified archetype.
+		/// </summary>
+		/// <param name="archetype">The archetype of the entity.</param>
+		/// <returns>The created entity.</returns>
 		public Entity CreateEntity(EntityArchetype archetype)
 		{
-			Span<Entity> entity = stackalloc Entity[1];
-			CreateEntity(archetype, entity);
+			var arch   = GetArchetypeInternal(archetype);
+			var entity = new Entity();
+			CreateEntityInternal(arch, &entity, 1);
 			
-			return entity[0];
+			return entity;
 		}
 
-		public ReadOnlySpan<Entity> CreateEntity(int count) =>
-			CreateEntity(CreateArchetype(), count);
-
-		public ReadOnlySpan<Entity> CreateEntity(EntityArchetype archetype, int count)
+		/// <summary>
+		/// Creates entities according to the size of the buffer
+		/// and stores them in the buffer.
+		/// </summary>
+		/// <param name="entities">The destination buffer.</param>
+		public void CreateEntity(Span<Entity> entities)
 		{
-			Span<Entity> entities = new Entity[count];
-			CreateEntityInternal(GetArchetypeInternal(archetype), entities);
-			
-			return entities;
+			CreateEntity(EntityArchetype.Empty, entities);
 		}
 
-		public void CreateEntity(Span<Entity> entities) =>
-			CreateEntity(CreateArchetype(), entities);
-
-		public void CreateEntity(EntityArchetype archetype, Span<Entity> entities) =>
-			CreateEntityInternal(GetArchetypeInternal(archetype), entities);
-
-		internal void CreateEntityInternal(Archetype* archetype, Span<Entity> entities)
+		/// <summary>
+		/// Creates entities according to the size of the buffer
+		/// and stores them in the buffer. All entities have the specified archetype.
+		/// </summary>
+		/// <param name="archetype">The archetype of all entities.</param>
+		/// <param name="entities">The destination buffer.</param>
+		public void CreateEntity(EntityArchetype archetype, Span<Entity> entities)
 		{
-			this.entityStore->EnsureCapacity(entities.Length);
-			this.entityStore->ReserveEntityBatch(entities);
-
-			var allocatedEntityCount = 0;
-			var chunkIndexInArray = 0;
-			
-			// This needs investigation: For some reason calling the ReserveEntityBatch
-			// with the Span is faster than with the pointer..., even though the entire
-			// fixed statement in the SSE branch is eliminated, as well as (possibly) the
-			// ArgumentOutOfRange checks.
-
-			// Because the count of entities and the entity size (with components) is known,
-			// it should be possible to reserve the chunks beforehand, not allocating them
-			// one by one in GetChunkWithEmptySlots().
-
+			var arch = GetArchetypeInternal(archetype);
 			fixed(Entity* ptr = entities)
+				CreateEntityInternal(arch, ptr, entities.Length);
+		}
+
+		internal void CreateEntityInternal(Archetype* archetype, Entity* entities, int count)
+		{
+			this.entityStore.EnsureCapacity(count);
+
+			var startIndex = 0;
+
+			while(count > 0)
 			{
-				// TODO: If the size of the entities is larger than a chunk allocating a chunk directly to
-				// avoid fragmenting the entities to separate chunks with GetChunkWithEmptySlots may be better.
+				var chunk = GetOrConstructChunk(archetype, count, ref startIndex);
+				var batch = GetLargestFreeEntityBatch(chunk, count);
 
-				while(allocatedEntityCount < entities.Length)
-				{
-					Chunk* chunk = archetype->chunkArray->GetChunkWithEmptySlots(ref chunkIndexInArray);
-					var chunkCount = chunk->count;
+				AllocateEntityBatch(batch);
 
-					var buffer = ptr + allocatedEntityCount;
-					var allocatedInChunk = ChunkUtility.AllocateEntities(chunk, buffer, entities.Length - allocatedEntityCount);
-
-					for(int i = 0; i < allocatedInChunk; ++i)
-					{
-						Entity entity = buffer[i];
-						this.entityStore->entitiesInChunk[entity.index] = new EntityInChunk(chunk, chunkCount + i, entity.version);
-					}
-
-					allocatedEntityCount += allocatedInChunk;
-				}
+				ChunkUtility.CopyEntities(batch.chunk, batch.index, entities, batch.count);
+				ChunkUtility.ZeroComponentData(batch.chunk, batch.index, batch.count);
+				
+				entities += batch.count;
+				count -= batch.count;
 			}
 		}
 
-		internal void CreateEntityInternal_LEGACY(Archetype* archetype, Span<Entity> entities)
+		/// <summary>
+		/// Creates a given number of entities.
+		/// </summary>
+		/// <param name="archetype">The archetype of all entities.</param>
+		/// <param name="count">The number of entities to create.</param>
+		public void CreateEntity(EntityArchetype archetype, int count)
 		{
-			this.entityStore->EnsureCapacity(entities.Length);
-			this.entityStore->ReserveEntityBatch(entities);
+			var arch = GetArchetypeInternal(archetype);
+			CreateEntityInternal(arch, count, null, 0);
+		}
 
-			var allocatedEntityCount = 0;
-			var chunkIndexInArray = 0;
+		public void CreateEntity(EntityArchetype archetype, int count, Action<EntityManager> action)
+		{
+			var arch = GetArchetypeInternal(archetype);
+			CreateEntityInternal(arch, count, action, this);
+		}
 
-			while(allocatedEntityCount < entities.Length)
+		public void CreateEntity<T>(EntityArchetype archetype, int count, Action<T> action, T args)
+		{
+			var arch = GetArchetypeInternal(archetype);
+			CreateEntityInternal(arch, count, action, args);
+		}
+
+		internal void CreateEntityInternal<T>(Archetype* archetype, int count, Action<T> action, T args)
+		{
+			this.entityStore.EnsureCapacity(count);
+
+			var startIndex = 0;
+
+			while(count > 0)
 			{
-				Chunk* chunk = archetype->chunkArray->GetChunkWithEmptySlots(ref chunkIndexInArray);
-				int chunkCount = chunk->count;
+				var chunk = GetOrConstructChunk(archetype, count, ref startIndex);
+				var batch = GetLargestFreeEntityBatch(chunk, count);
 
-				Span<Entity> entitiesInChunk = ChunkUtility.AllocateEntities_LEGACY(chunk, entities.Length - allocatedEntityCount);
+				AllocateEntityBatch(batch);
 
-				for(int i = 0; i < entitiesInChunk.Length; ++i)
-				{
-					Entity entity = entities[allocatedEntityCount++];
-					entitiesInChunk[i] = entity;
-					this.entityStore->entitiesInChunk[entity.index] = new EntityInChunk(chunk, chunkCount + i, entity.version);
-				}
+				ChunkUtility.ZeroComponentData(batch.chunk, batch.index, batch.count);
+
+				count -= batch.count;
+
+				if(action == null)
+					continue;
+			
+				action(new EntityTable(batch.chunk, batch.index, batch.count), args);
 			}
 		}
 
-		public void DestroyEntity(Entity entity) => DestroyEntity(new ReadOnlySpan<Entity>(&entity, 1)); // Better but the loop can be skipped.
-
-		public void DestroyEntity(ReadOnlySpan<Entity> entities)
+		/// <summary>
+		/// Destroys an entity.
+		/// </summary>
+		/// <param name="entity">The entity to destroy.</param>
+		/// <returns>True if the entity to destroy exists.</returns>
+		public bool DestroyEntity(Entity entity)
 		{
-			int index = 0;
-
-			while(index < entities.Length)
+			if(TryGetEntityInChunk(entity, out var entityInChunk))
 			{
-				var entityBatchInChunk = this.entityStore->GetFirstEntityBatchInChunk(entities.Slice(index));
+				DestroyEntityBatch(new EntityBatch(entityInChunk));
+				return true;
+			}
 
-				index += entityBatchInChunk.count;
+			return false;
+		}
 
-				if(entityBatchInChunk.chunk == null)
+		/// <summary>
+		/// Destroys all existing entities in the buffer.
+		/// </summary>
+		/// <param name="entities">The buffer of entities to destroy.</param>
+		/// <returns>
+		/// The number of destroyed entities. If the number is not equal to the buffer size,
+		/// not all entities existed.
+		/// </returns>
+		public int DestroyEntity(ReadOnlySpan<Entity> entities)
+		{
+			var count = 0;
+			var destroyed = 0;
+
+			while(count < entities.Length)
+			{
+				var batch = GetFirstEntityBatch(entities.Slice(count));
+
+				count += batch.count;
+
+				if(batch.chunk == null)
 					continue;
 
-				this.entityStore->DestroyEntityBatchInChunk(entityBatchInChunk);
+				destroyed += batch.count;
+
+				DestroyEntityBatch(batch);
 			}
 
-			entityStore->MarkIndicesAsFree(entities);
+			return destroyed;
 		}
 
-		public bool IsAlive(Entity entity) => this.entityStore->Exists(entity);
-	
-		// TODO: Batched archetype change.
-
-		public void ChangeEntityArchetype(Entity entity, EntityArchetype archetype)
+		/// <summary>
+		/// Destroys all entities in the archetype.
+		/// </summary>
+		/// <param name="archetype">The archetype of the entities.</param>
+		/// <returns>The number of destroyed entities.</returns>
+		public int DestroyEntity(EntityArchetype archetype)
 		{
-			Archetype* ptr = GetArchetypeInternal(archetype);
-
-			if(ptr != this.entityStore->GetArchetype(entity))
-				this.entityStore->MoveEntityToArchetype(entity, ptr);
+			var arch = GetArchetypeInternal(archetype);
+			return DestroyEntityInternal(arch);
 		}
 
-		public ReadOnlySpan<Entity> GetEntities(EntityArchetype archetype) // Buffered?
+		/// <summary>
+		/// Destroys all entities that match the query.
+		/// </summary>
+		/// <param name="query">The query that the entities must match.</param>
+		/// <returns>The number of destroyed entities.</returns>
+		public int DestroyEntity(EntityQuery query)
 		{
-			Archetype* ptr = GetArchetypeInternal(archetype);
-			Span<Entity> entities = new Entity[ptr->entityCount];
-			ChunkUtility.WriteEntitiesToBuffer(ptr->chunkArray->chunks, ptr->chunkArray->count, entities);
+			var qry = GetQueryInternal(query);
+			UpdateQueryCache(qry);
 
-			return entities;
-		}
-
-		public ReadOnlySpan<Entity> GetEntities(EntityQuery query)
-		{
-			var queryData = GetUpdatedQueryData(query);
-			var archetypes = queryData->archetypes;
-			var archetypeCount = queryData->archetypeCount;
-			var entityCount = 0;
-
-			for(int i = 0; i < archetypeCount; ++i)
-				entityCount += archetypes[i]->entityCount;
-
-			int entitiesInBuffer = 0;
-			Span<Entity> entities = new Entity[entityCount];
-
-			for(int i = 0; i < archetypeCount; ++i)
-			{
-				var chunks = archetypes[i]->chunkArray->chunks;
-				var chunkCount = archetypes[i]->chunkArray->count;
-				entitiesInBuffer += ChunkUtility.WriteEntitiesToBuffer(chunks, chunkCount, entities.Slice(entitiesInBuffer));
-			}
-
-			return entities;
-		}
-
-		public int GetEntityCount(EntityQuery query)
-		{
-			var queryData = GetUpdatedQueryData(query);
 			var count = 0;
 
-			for(int i = 0; i < queryData->archetypeCount; ++i)
-				count += queryData->archetypes[i]->entityCount;
-				
+			for(int i = 0; i < qry->archetypeList.count; ++i)
+				count += DestroyEntityInternal(qry->archetypeList.archetypes[i]);
+
 			return count;
 		}
 
-		public int GetEntityCount(EntityArchetype archetype) =>
-			GetArchetypeInternal(archetype)->entityCount;
+		internal int DestroyEntityInternal(Archetype* archetype)
+		{
+			var count = archetype->entityCount;
+
+			for(int i = 0; i < archetype->chunkList.count; ++i)
+			{
+				var chunk = archetype->chunkList.chunks[i];
+				DestroyEntityBatch(new EntityBatch(chunk));
+			}
+
+			return count;
+		}
+
+		/// <summary>
+		/// Checks whether an entity is valid.
+		/// </summary>
+		/// <param name="entity">The entity to check.</param>
+		/// <returns>True if version matches the version of the current entity at the index.</returns>
+		public bool Exists(Entity entity)
+		{
+			var entityInChunk = this.entityStore.entitiesInChunk[entity.index];
+			return entityInChunk.version == entity.version && entityInChunk.chunk != null;
+			// Replace with return entity.index < this.entityStore.count && entityInChunk.version == entity.version?
+			// No, because if the first entity is deleted the version of the entity is 0 again which makes Exists(default) true.
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		internal bool TryGetEntityInChunk(Entity entity, out EntityInChunk entityInChunk)
+		{
+			entityInChunk = this.entityStore.entitiesInChunk[entity.index];
+			return entityInChunk.version == entity.version && entityInChunk.chunk != null;
+		}
+
+		/// <summary>
+		/// Clones an entity.
+		/// </summary>
+		/// <param name="entity">The entity to clone.</param>
+		/// <param name="count">The number of entities to instantiate.</param>
+		/// <returns>True if the entity to clone exists.</returns>
+		public bool Instantiate(Entity entity, int count)
+		{
+			if(TryGetEntityInChunk(entity, out var entityInChunk))
+			{
+				CloneEntityInternal(entityInChunk.chunk, entityInChunk.index, count);
+				return true;
+			}
+
+			return false;
+		}
+
+		internal void CloneEntityInternal(Chunk* srcChunk, int srcIndex, int count)
+		{
+			this.entityStore.EnsureCapacity(count);
+
+			var archetype = srcChunk->archetype;
+			var startIndex = 0;
+
+			while(count > 0)
+			{
+				var chunk = GetOrConstructChunk(archetype, count, ref startIndex);
+				var batch = GetLargestFreeEntityBatch(chunk, count);
+
+				AllocateEntityBatch(batch);
+
+				ChunkUtility.CloneComponentData(srcChunk, srcIndex, batch.chunk, batch.index, batch.count);
+
+				count -= batch.count;
+			}
+		}
+
+		/// <summary>
+		/// Clones an entity according to the size of the buffer
+		/// and stores them in the buffer.
+		/// </summary>
+		/// <param name="entity">The entity to clone.</param>
+		/// <param name="entities">The destination buffer.</param>
+		/// <returns>True if the entity to clone exists.</returns>
+		public bool Instantiate(Entity entity, Span<Entity> entities)
+		{
+			if(TryGetEntityInChunk(entity, out var entityInChunk))
+			{
+				fixed(Entity* ptr = entities)
+					CloneEntityInternal(entityInChunk.chunk, entityInChunk.index, ptr, entities.Length);
+				return true;
+			}
+			
+			return false;
+		}
+
+		internal void CloneEntityInternal(Chunk* srcChunk, int srcIndex, Entity* entities, int count)
+		{
+			this.entityStore.EnsureCapacity(count);
+
+			var archetype = srcChunk->archetype;
+			var startIndex = 0;
+
+			while(count > 0)
+			{
+				var chunk = GetOrConstructChunk(archetype, count, ref startIndex);
+				var batch = GetLargestFreeEntityBatch(chunk, count);
+
+				AllocateEntityBatch(batch);
+
+				ChunkUtility.CopyEntities(batch.chunk, batch.index, entities, batch.count);
+				ChunkUtility.CloneComponentData(srcChunk, srcIndex, batch.chunk, batch.index, batch.count);
+				
+				entities += batch.count;
+				count -= batch.count;
+			}
+		}
+		
+		/// <summary>
+		/// Gets the archetype of the specified entity.
+		/// </summary>
+		/// <param name="entity">The entity.</param>
+		/// <returns>The archetype of the entity.</returns>
+		public EntityArchetype GetArchetype(Entity entity)
+		{
+			var entityInChunk = this.entityStore.entitiesInChunk[entity.index];
+			
+			if(entityInChunk.chunk != null && entityInChunk.version == entity.version)
+				return new EntityArchetype(entityInChunk.chunk->archetype->index);
+			
+			return default;
+		}
+
+		/// <summary>
+		/// Moves an entity to the specified archetype.
+		/// </summary>
+		/// <param name="entity">The entity.</param>
+		/// <param name="archetype">The destination archetype.</param>
+		/// <returns>True if the entity to move exists and does not belong to the archetype.</returns>
+		public bool MoveEntity(Entity entity, EntityArchetype archetype)
+		{
+			if(TryGetEntityInChunk(entity, out var entityInChunk))
+			{
+				var arch = GetArchetypeInternal(archetype);
+
+				if(entityInChunk.chunk->archetype != arch)
+				{
+					MoveEntityBatch(new EntityBatch(entityInChunk), arch);
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		/// <summary>
+		/// Moves all entities in the buffer to the specified archetype.
+		/// </summary>
+		/// <param name="entities">The buffer of entities to move.</param>
+		/// <param name="archetype">The destination archetype.</param>
+		/// <returns>
+		/// The number of moved entities. If the number is not equal to the buffer size,
+		/// not all entities existed or already belong to the archetype.
+		/// </returns>
+		public int MoveEntity(ReadOnlySpan<Entity> entities, EntityArchetype archetype)
+		{
+			var arch = GetArchetypeInternal(archetype);
+			var count = 0;
+			var moved = 0;
+
+			while(count < entities.Length)
+			{
+				var batch = GetFirstEntityBatch(entities.Slice(count));
+
+				count += batch.count;
+
+				if(batch.chunk == null || batch.chunk->archetype == arch)
+					continue;
+
+				moved += batch.count;
+
+				MoveEntityBatch(batch, arch);
+			}
+
+			return moved;
+		}
+
+		/// <summary>
+		/// Gets the number of components of an entity.
+		/// </summary>
+		/// <param name="entity">The entity.</param>
+		/// <returns>The number of components.</returns>
+		public int GetComponentCount(Entity entity)
+		{
+			if(TryGetEntityInChunk(entity, out var entityInChunk))
+				return entityInChunk.chunk->archetype->componentCount;
+			return 0;
+		}
+
+		internal void AllocateEntityBatch(EntityBatch batch)
+		{
+			this.entityStore.changeVersion->MarkStructuralChange();
+
+			ChunkUtility.ReserveEntities(batch.chunk, batch.count);
+			this.entityStore.Register(batch.chunk, batch.index, batch.count);
+		}
+
+		internal void MoveEntityBatch(EntityBatch batch, Archetype* archetype)
+		{
+			this.entityStore.changeVersion->MarkStructuralChange();
+
+			var chunkIndexInArray = 0;
+			var count = 0;
+			
+			while(count < batch.count)
+			{
+				var dstChunk = GetOrConstructChunkWithEmptySlots(archetype, ref chunkIndexInArray);
+				var dstBatch = GetLargestFreeEntityBatch(dstChunk, batch.count - count);
+				
+				ChunkUtility.MoveEntities(batch.chunk, batch.index + count, dstChunk, dstBatch.index, dstBatch.count);
+				this.entityStore.Update(dstChunk, dstBatch.index, dstBatch.count);
+				
+				count += dstBatch.count;
+			}
+
+			var patchCount = ChunkUtility.PatchEntities(batch.chunk, batch.index, batch.count);
+			this.entityStore.Update(batch.chunk, batch.index, patchCount);
+
+			ReleaseChunkIfEmpty(batch.chunk);
+		}
+
+		internal void DestroyEntityBatch(EntityBatch batch)
+		{
+			this.entityStore.changeVersion->MarkStructuralChange();
+
+			this.entityStore.Unregister(batch.chunk, batch.index, batch.count);
+			var patchCount = ChunkUtility.PatchEntities(batch.chunk, batch.index, batch.count);
+			this.entityStore.Update(batch.chunk, batch.index, patchCount);
+
+			ReleaseChunkIfEmpty(batch.chunk);
+		}
+
+		internal EntityBatch GetLargestFreeEntityBatch(Chunk* chunk, int count)
+		{
+			var free = chunk->capacity - chunk->count;
+			var actualCount = (free <= count) ? free : count;
+
+			return new EntityBatch(chunk, chunk->count, actualCount);
+		}
+
+		internal EntityBatch GetFirstEntityBatch(ReadOnlySpan<Entity> entities)
+		{
+			var firstEntity = entities[0];
+			var firstEntityInChunk = this.entityStore.entitiesInChunk[firstEntity.index];
+
+			Chunk* chunk = firstEntityInChunk.version == firstEntity.version
+				? firstEntityInChunk.chunk
+				: null;
+
+			var count = 1;
+
+			if(chunk == null)
+			{
+				for(; count < entities.Length; ++count)
+				{
+					var entity = entities[count];
+					var entityInChunk = this.entityStore.entitiesInChunk[entity.index];
+
+					if(entityInChunk.version == entity.version && entityInChunk.chunk != null)
+						break;
+				}
+			} else {
+				for(; count < entities.Length; ++count)
+				{
+					var entity = entities[count];
+					var entityInChunk = this.entityStore.entitiesInChunk[entity.index];
+
+					if(entityInChunk.index != (firstEntityInChunk.index + count))
+						break;
+
+					if(entityInChunk.chunk != chunk || entityInChunk.version != entity.version)
+						break;
+				}
+			}
+
+			return new EntityBatch(chunk, firstEntityInChunk.index, count);
+		}
 	}
 }

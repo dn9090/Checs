@@ -6,66 +6,60 @@ namespace Checs
 	[StructLayout(LayoutKind.Sequential)]
 	internal unsafe struct HashMap<T> : IDisposable where T : unmanaged
 	{
-		private const int DefaultCapacity = 16;
-
-		public int hashMask => capacity - 1;
-
 		public int count;
 
 		public int capacity;
 
-		private int* m_Hashes;
+		public uint* hashes;
 
-		private T* m_Elements;
+		public T* elements;
 
-		public static HashMap<T> Empty() => new HashMap<T>(DefaultCapacity);
-
-		private HashMap(int capacity)
+		public HashMap(int capacity)
 		{
 			this.count = 0;
 			this.capacity = capacity;
-			this.m_Hashes = MemoryUtility.Malloc<int>(this.capacity);
-			this.m_Elements = MemoryUtility.Malloc<T>(this.capacity);
-
-			MemoryUtility.MemSet(this.m_Hashes, 0, sizeof(int) * this.capacity);
+			this.hashes = (uint*)Allocator.Calloc(sizeof(int) * this.capacity);
+			this.elements = (T*)Allocator.Alloc(sizeof(T) * this.capacity);
 		}
 
-		public void Add(int hashCode, T element)
+		public void Add(uint hashCode, T element)
 		{
 			hashCode = hashCode != 0 ? hashCode : 1;
 
-			int offset = hashCode & this.hashMask;
+			var mask = this.capacity - 1;
+			var offset = (int)hashCode & mask;
 
 			while(true)
 			{
-				var hash = this.m_Hashes[offset];
+				var hash = this.hashes[offset];
 
 				// Node is empty.
 				if(hash == 0)
 				{
-					this.m_Hashes[offset] = hashCode;
-					this.m_Elements[offset] = element;
+					this.hashes[offset] = hashCode;
+					this.elements[offset] = element;
 					++this.count;
-					PossiblyGrow();
+					PossiblyResizeAndRehash();
 					return;
 				}
 
-				offset = (offset + 1) & this.hashMask;
+				offset = (offset + 1) & mask;
 			}
 		}
 
-		public bool TryGet(int hashCode, out T value)
+		public bool TryGet(uint hashCode, out T value)
 		{
 			value = default;
 
 			hashCode = hashCode != 0 ? hashCode : 1;
 
-			int offset = hashCode & this.hashMask;
-			int attempts = 0;
+			var mask = this.capacity - 1;
+			var offset = hashCode & mask;
+			var attempts = 0;
 
-			while(true)
+			do
 			{
-				var hash = this.m_Hashes[offset];
+				var hash = this.hashes[offset];
 
 				// Node is empty.
 				if(hash == 0)
@@ -73,57 +67,56 @@ namespace Checs
 
 				if(hash == hashCode)
 				{
-					value = this.m_Elements[offset];
+					value = this.elements[offset];
 					return true; 
 				}
 
-				offset = (offset + 1) & this.hashMask;
+				offset = (offset + 1) & mask;
+				
 				++attempts;
+			} while(attempts < this.capacity);
 
-				if(attempts == this.capacity)
-					return false;
+			return false;
+		}
+
+		public T Get(uint hashCode)
+		{
+			TryGet(hashCode, out T value);
+			return value;
+		}
+
+		public void PossiblyResizeAndRehash()
+		{
+			var unoccupied = this.capacity - this.count;
+			
+			if (unoccupied < this.capacity / 3)
+			{
+				var size = this.capacity * 2;
+				var temp = this;
+				this = new HashMap<T>(size);
+				Rehash(temp);
+				temp.Dispose();
 			}
 		}
 
-		public T Get(int hashCode)
+		public void Rehash(HashMap<T> other)
 		{
-			if(TryGet(hashCode, out T value))
-				return value;
-			return default(T);
+			for(int i = 0; i < other.capacity; ++i)
+			{
+				var hash = other.hashes[i];
+
+				if(hash != 0)
+					Add(hash, other.elements[i]);
+			}
 		}
 
 		public void Dispose()
 		{
+			Allocator.Free(this.hashes);
+			Allocator.Free(this.elements);
+
 			this.count = 0;
 			this.capacity = 0;
-			MemoryUtility.Free(this.m_Hashes);
-			MemoryUtility.Free(this.m_Elements);
-		}
-
-		private void PossiblyGrow()
-		{
-			int unoccupied = this.capacity - this.count;
-			if (unoccupied < this.capacity / 3)
-				Resize(this.capacity * 2);
-		}
-
-		private void Resize(int size)
-		{
-			var temp = this;
-			this = new HashMap<T>(size);
-			Rehash(temp);
-			temp.Dispose();
-		}
-
-		private void Rehash(HashMap<T> other)
-		{
-			for(int i = 0; i < other.capacity; ++i)
-			{
-				var hash = other.m_Hashes[i];
-
-				if(hash != 0)
-					Add(hash, other.m_Elements[i]);
-			}
 		}
 	}
 }

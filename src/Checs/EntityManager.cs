@@ -1,66 +1,62 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Threading;
 
 namespace Checs
 {
-	// TODOs:
-	// [ ] Rework the query matching algorithm.
-	// [ ] Query and archetype component types need to be distinct.
-	// [ ] Better free heuristics for ChunkPool.
-	// [ ] Allocate / recycle multiple chunks for batch processing like CreateEntities(1000000).
-	// [ ] (API like GetMaxEntitiesPerBatchCount(EntityArchetype archetype))
-	// [ ] Cleanup EntityManager, HashMap and Archetype initialization.
-	// [ ] Keep track of structural changes.
-	// [ ] ChunkPool needs to be thread-safe.
-	// [ ] TypeRegistry needs to be thread-safe.
-	// [ ] Generate public API for World?
-
+	[StructLayout(LayoutKind.Sequential)]
 	public unsafe partial class EntityManager : IDisposable
 	{
-		internal ArchetypeStore* archetypeStore;
+		internal EntityStore entityStore; // 32 - 32
 
-		internal EntityStore* entityStore;
+		internal ArchetypeStore archetypeStore; // 16 - 48
 
-		internal EntityQueryCache* queryCache;
+		internal QueryStore queryStore; // 16- 64
 
-		internal EntityManager()
+		internal ChunkStore chunkStore; // 16 - 80
+
+		internal HashMap<int> lookupTable; // 24 - 104
+
+		/// <summary>
+		/// Returns the number of entities.
+		/// </summary>
+		public int entityCount => this.entityStore.count;
+
+		/// <summary>
+		/// Returns the number of archetypes.
+		/// </summary>
+		public int archetypeCount => this.archetypeStore.count;
+
+		/// <summary>
+		/// Returns the number of queries.
+		/// </summary>
+		public int queryCount => this.queryStore.count;
+
+		public EntityManager()
 		{
-			Construct();
-			
-			// Create the empty archetype to avoid that the index
-			// of the default EntityArchetype is out of range.
-			CreateArchetype();
+			this.entityStore = new EntityStore(16);
+			this.archetypeStore = new ArchetypeStore(16);
+			this.queryStore = new QueryStore(16);
+			this.chunkStore = new ChunkStore();
+			this.lookupTable = new HashMap<int>(16);
 
-			// Create the empty query to avoid that the index
-			// of the default EntityQuery is out of range.
-			CreateQuery();
+			CreateEmptyArchetype();
+			CreateUniversialQuery();
 		}
 
-		private void Construct()
+		/*~EntityManager()
 		{
-			// Revisit with threading (cache invalidation).
-			byte* ptr = MemoryUtility.Malloc<byte>(
-				sizeof(ArchetypeStore) +
-				sizeof(EntityStore) +
-				sizeof(EntityQueryCache));
-
-			this.archetypeStore = (ArchetypeStore*)ptr;
-			this.entityStore = (EntityStore*)(ptr += sizeof(ArchetypeStore));
-			this.queryCache = (EntityQueryCache*)(ptr += sizeof(EntityStore));
-		
-			ArchetypeStore.Construct(this.archetypeStore);
-			EntityStore.Construct(this.entityStore);
-			EntityQueryCache.Construct(this.queryCache);
-		}
+			Dispose();
+		}*/
 
 		public void Dispose()
 		{
-			this.archetypeStore->Dispose();
-			this.entityStore->Dispose();
-			this.queryCache->Dispose();
-		
-			MemoryUtility.Free(this.archetypeStore);
+			this.entityStore.Dispose();
+			this.archetypeStore.Dispose();
+			this.queryStore.Dispose();
+			this.chunkStore.Dispose();
+			this.lookupTable.Dispose();
 		}
 	}
 }

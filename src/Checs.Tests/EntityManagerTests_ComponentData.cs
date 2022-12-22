@@ -4,107 +4,189 @@ using Xunit;
 
 namespace Checs.Tests
 {
-	public partial class EntityManagerTests
+	public partial class EntityManagerTests_ComponentData
 	{
 		[Fact]
-		public void ComponentDataTypesMatchArchetype()
+		public void ComponentTypesMatchArchetype()
 		{
 			using EntityManager manager = new EntityManager();
 
-			var positionArchetype = manager.CreateArchetype(typeof(Position));
-			var positionAndRotationArchetype = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation) });
+			{
+				var lhsArchetype = manager.CreateArchetype(ComponentType.Of<Position>());
+				var rhsArchetype = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
 
-			var emptyEntity = manager.CreateEntity();
-			var positionEntity = manager.CreateEntity(positionArchetype);
-			var positionAndRotationEntity = manager.CreateEntity(positionAndRotationArchetype);
-			
-			Assert.False(manager.HasComponentData<Position>(emptyEntity));
-			Assert.False(manager.HasComponentData<Rotation>(emptyEntity));
+				var lhsEntity = manager.CreateEntity(lhsArchetype);
+				var rhsEntity = manager.CreateEntity(rhsArchetype);
 
-			Assert.True(manager.HasComponentData<Position>(positionEntity));
-			Assert.False(manager.HasComponentData<Rotation>(positionEntity));
+				Assert.True(manager.HasComponentData<Position>(lhsEntity));
+				Assert.False(manager.HasComponentData<Rotation>(lhsEntity));
 
-			Assert.True(manager.HasComponentData<Position>(positionAndRotationEntity));
-			Assert.True(manager.HasComponentData<Rotation>(positionAndRotationEntity));
+				Assert.True(manager.HasComponentData<Position>(rhsEntity));
+				Assert.True(manager.HasComponentData<Rotation>(rhsEntity));
+			}
 		}
 
 		[Fact]
-		public void ComponentDataIsStoredInChunk()
+		public void Modifiable()
 		{
 			using EntityManager manager = new EntityManager();
 
-			var types = new Type[] { typeof(Layer) };
-			var archetype = manager.CreateArchetype(types);
+			{
+				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
+				var entity = manager.CreateEntity(archetype);
+				var value = new Position(1f, 2f, 3f);
 
-			var entity = manager.CreateEntity(archetype);
+				Assert.True(manager.SetComponentData(entity, value));
+				Assert.Equal(value, manager.GetComponentData<Position>(entity));
+			}
 
-			manager.SetComponentData(entity, new Layer(12345));
+			{
+				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
+				var entities = new Entity[3];
+				var values = new Position[] {
+					new Position(1f, 2f, 3f),
+					new Position(4f, 5f, 6f),
+					new Position(7f, 8f, 9f)
+				};
 
-			Assert.Equal(12345, manager.GetComponentData<Layer>(entity).value);
+				manager.CreateEntity(archetype, entities);
+				manager.SetComponentData(entities[0], values[0]);
+				manager.SetComponentData(entities[1], values[1]);
+				manager.SetComponentData(entities[2], values[2]);
 
-			manager.ForEach(archetype, (batch) => {
-				Assert.Equal(1, batch.length);
-				Assert.Equal(12345, batch.GetComponentData<Layer>()[0].value);
-			});
+				Assert.Equal(values[0], manager.GetComponentData<Position>(entities[0]));
+				Assert.Equal(values[1], manager.GetComponentData<Position>(entities[1]));
+				Assert.Equal(values[2], manager.GetComponentData<Position>(entities[2]));
+			}
+
+			{
+				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
+				var entity = manager.CreateEntity(archetype);
+				var value = new Position(1f, 2f, 3f);
+
+				manager.SetComponentData(entity, value);
+				manager.CreateEntity(archetype, 10);
+
+				Assert.Equal(value, manager.GetComponentData<Position>(entity));
+			}
 		}
 
 		[Fact]
-		public void ComponentDataIsSetForMultipleEntities()
+		public void Addable()
 		{
 			using EntityManager manager = new EntityManager();
 
-			var entities = new Entity[1000];
+			{
+				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
+				var entity = manager.CreateEntity(archetype);
 
-			var types = new Type[] { typeof(Layer), typeof(Position), typeof(Rotation), typeof(Velocity) };
-			var archetype = manager.CreateArchetype(types);
+				Assert.True(manager.AddComponentData<Rotation>(entity, default));
+				Assert.True(manager.HasComponentData<Rotation>(entity));
+			}
 
-			manager.CreateEntity(archetype, entities);
-			manager.SetComponentData(entities, new Layer(12345));
+			{
+				var archetype = manager.CreateArchetype();
+				var entity = manager.CreateEntity(archetype);
 
-			manager.ForEach(archetype, (batch) => {
-				for(int i = 0; i < batch.length; ++i)
-					Assert.Equal(12345, batch.GetComponentData<Layer>()[i].value);
-			});
-
-			Array.Resize(ref entities, entities.Length * 2);
-
-			var typesMissingComponent = new Type[] { typeof(Position), typeof(Rotation), typeof(Velocity) };
-			var archetypeMissingComponent = manager.CreateArchetype(types);
-
-			manager.CreateEntity(archetype, entities.AsSpan().Slice(entities.Length / 2));
-			manager.SetComponentData(entities, new Layer(54321));
-
-			manager.ForEach(archetype, (batch) => {
-				for(int i = 0; i < batch.length; ++i)
-					Assert.Equal(54321, batch.GetComponentData<Layer>()[i].value);
-			});
+				Assert.True(manager.AddComponentData<Position>(entity, default));
+				Assert.False(manager.AddComponentData<Position>(entity, default));
+			}
 		}
 
 		[Fact]
-		public void ComponentDataIsCopied()
+		public void Removable()
 		{
 			using EntityManager manager = new EntityManager();
 
-			var types = new Type[] { typeof(Layer), typeof(Position), typeof(Rotation) };
-			var archetype = manager.CreateArchetype(types);
-			var query = manager.CreateQuery(types);
+			{
+				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
+				var entity = manager.CreateEntity(archetype);
 
-			var entities = manager.CreateEntity(archetype, 1000);
+				Assert.True(manager.RemoveComponentData<Position>(entity));
+				Assert.Equal(manager.CreateArchetype(), manager.GetArchetype(entity));
+			}
 
-			manager.SetComponentData(entities[0], new Layer(10));
-			manager.SetComponentData(entities[entities.Length - 1], new Layer(100));
+			{
+				var archetype = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var entity = manager.CreateEntity(archetype);
 
-			var archetypeBuffer = new Layer[manager.GetEntityCount(archetype)];
-			manager.CopyComponentData<Layer>(archetype, archetypeBuffer);
+				Assert.True(manager.RemoveComponentData<Position>(entity));
+				Assert.True(manager.HasComponentData<Rotation>(entity));
+				Assert.False(manager.RemoveComponentData<Position>(entity));
+			}
+		}
 
-			Assert.Equal(10, archetypeBuffer[0].value);
-			Assert.Equal(100, archetypeBuffer[archetypeBuffer.Length - 1].value);
+		[Fact]
+		public void Copyable()
+		{
+			using EntityManager manager = new EntityManager();
 
-			var queryBuffer = new Layer[manager.GetEntityCount(query)];
-			manager.CopyComponentData<Layer>(query, queryBuffer);
+			{
+				var archetype = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var entities = new Entity[100];
+				manager.CreateEntity(archetype, entities);
 
-			Assert.Equal(10, queryBuffer[0].value);
-			Assert.Equal(100, queryBuffer[queryBuffer.Length - 1].value);
+				var buffer = new Position[200];
+				var copyCount = manager.CopyComponentData<Position>(archetype, buffer);
+
+				Assert.Equal(entities.Length, copyCount);
+			}
+
+			{
+				var archetype = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var entities = new Entity[100];
+				manager.CreateEntity(archetype, entities);
+
+				var buffer = new Scale[200];
+				var copyCount = manager.CopyComponentData<Scale>(archetype, buffer);
+
+				Assert.Equal(0, copyCount);
+			}
+		}
+
+		[Fact]
+		public void Batchable()
+		{
+			using EntityManager manager = new EntityManager();
+
+			{
+				var archetype = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var entities = new Entity[20];
+				manager.CreateEntity(archetype, entities);
+
+				var count = manager.SetComponentData<Position>(entities, new Position(1f, 2f, 3f));
+
+				Assert.Equal(entities.Length, count);
+			}
+
+			{
+				var archetype = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var entities = new Entity[20];
+				manager.CreateEntity(entities.AsSpan(0, entities.Length / 2));
+				manager.CreateEntity(archetype, entities.AsSpan(entities.Length / 2));
+
+				var count = manager.SetComponentData<Position>(entities, new Position(1f, 2f, 3f));
+
+				Assert.Equal(entities.Length / 2, count);
+			}
 		}
 	}
 }

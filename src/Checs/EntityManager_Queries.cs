@@ -1,239 +1,239 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Threading;
 
 namespace Checs
 {
 	public unsafe partial class EntityManager
 	{
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		internal static int GetQueryTypeHash(Span<int> includeTypes, Span<int> excludeTypes)
+		/// <summary>
+		/// Creates the universial query matches
+		/// all archetypes (including the empty archetype).
+		/// </summary>
+		/// <remarks>
+		/// Is equivalent to <c>EntityQuery.Universial</c> or
+		/// the <c>default</c> archetype.
+		/// </remarks>
+		/// <returns>The universial query.</returns>
+		public EntityQuery CreateQuery()
 		{
-			int hashCode = 0;
-
-			for(int i = 0; i < includeTypes.Length; ++i)
-				hashCode = HashCode.Combine(hashCode, includeTypes[i]);
-
-			for(int i = 0; i < excludeTypes.Length; ++i)
-				hashCode = HashCode.Combine(hashCode, -excludeTypes[i]);
-
-			return hashCode;
+			return EntityQuery.Universal;
 		}
 
+		/// <summary>
+		/// Creates a query that matches only archetypes
+		/// that contain the specified included component type
+		/// and do not contain the specified excluded component type,
+		/// unless the query already exists.
+		/// </summary>
+		/// <param name="includeType">The component type that archetypes must have or default.</param>
+		/// <param name="excludeType">The component type that archetypes may not have or default.</param>
+		/// <returns>A new or existing matching query.</returns>
+		public EntityQuery CreateQuery(ComponentType includeType = default,
+			ComponentType excludeType = default)
+		{
+			var includeHashCode = includeType.hashCode;
+			var excludeHashCode = excludeType.hashCode;
+
+			var includeCount = includeType.hashCode == 0 ? 0 : 1;
+			var excludeCount = excludeType.hashCode == 0 ? 0 : 1;
+
+			return CreateQueryInternal(&includeHashCode, includeCount, &excludeHashCode, excludeCount);
+		}
+
+		/// <summary>
+		/// Creates a query that matches only archetypes
+		/// that contain the specified included component types
+		/// and do not contain any of the specified excluded component types,
+		/// unless the query already exists.
+		/// </summary>
+		/// <param name="includeTypes">The component types that archetypes must have.</param>
+		/// <param name="excludeTypes">The component types that archetypes may not have.</param>
+		/// <returns>A new or existing matching query.</returns>
+		public EntityQuery CreateQuery(ReadOnlySpan<ComponentType> includeTypes = default,
+			ReadOnlySpan<ComponentType> excludeTypes = default)
+		{
+			var includeHashCodes = stackalloc uint[includeTypes.Length];
+			var excludeHashCodes = stackalloc uint[excludeTypes.Length];
+
+			var includeCount = TypeUtility.Sort(includeTypes, includeHashCodes);
+			var excludeCount = TypeUtility.Sort(excludeTypes, excludeHashCodes);
+
+			return CreateQueryInternal(includeHashCodes, includeCount, excludeHashCodes, excludeCount);
+		}
+
+		internal EntityQuery CreateQueryInternal(uint* includeHashCodes, int includeCount,
+			uint* excludeHashCodes, int excludeCount)
+		{
+			var includeHashCode = xxHash.GetHashCode(includeHashCodes, includeCount);
+			var excludeHashCode = xxHash.GetHashCode(excludeHashCodes, excludeCount);
+			var hashCode = (includeHashCode ^ (397 * excludeHashCode)) | 0x80000000;
+
+			if(this.lookupTable.TryGet(hashCode, out var index))
+				return new EntityQuery(index);
+
+			var bufferSize = Query.SizeOfBuffer(includeCount, excludeCount);
+			var query = this.queryStore.Aquire(bufferSize);
+
+			this.lookupTable.Add(hashCode, query->index);
+			
+			Query.Construct(query, this.entityStore.changeVersion, includeHashCodes, includeCount, excludeHashCodes, excludeCount);
+			
+			return new EntityQuery(query->index);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		internal Query* GetQueryInternal(EntityQuery query)
+		{
+			return this.queryStore.queries[query.index];
+		}
+
+		/// <summary>
+		/// Checks if a query matches an archetype.
+		/// </summary>
+		/// <param name="query">The query.</param>
+		/// <param name="archetype">The archetype to check.</param>
+		/// <returns>True if the archetype matches the component types in the query.</returns>
 		public bool MatchesQuery(EntityQuery query, EntityArchetype archetype)
 		{
-			var queryData = &this.queryCache->queries[query.index];
-			return ArchetypeMatchesQueryFilter(GetArchetypeInternal(archetype), queryData);
+			var qry = GetQueryInternal(query);
+			var arch = GetArchetypeInternal(archetype);
+
+			return QueryUtility.Matches(qry, arch);
 		}
 
-		public EntityQuery CreateQuery() => CreateQueryInternal(Span<int>.Empty, 0, 0);
-
-		// TODO: Excluding query.
-
-		public EntityQuery CreateQuery(Span<Type> includeTypes) => CreateQuery(includeTypes, Span<Type>.Empty);
-
-		public EntityQuery CreateQuery(Span<Type> includeTypes, Span<Type> excludeTypes)
+		public bool QueriesIntersect(EntityQuery lhs, EntityQuery rhs)
 		{
-			var typeCount = includeTypes.Length + excludeTypes.Length;
-
-			Span<int> types = typeCount > 16
-				? new int[typeCount]
-				: stackalloc int[typeCount];
-
-			for(int i = 0; i < includeTypes.Length; ++i)
-				types[i] = TypeRegistry.ToTypeIndex(includeTypes[i]);
+			var qryLhs = GetQueryInternal(lhs);
+			var qryRhs = GetQueryInternal(rhs);
 			
-			for(int i = 0; i < excludeTypes.Length; ++i)
-				types[i + includeTypes.Length] = TypeRegistry.ToTypeIndex(excludeTypes[i]);
+			return QueryUtility.Intersects(qryLhs, qryRhs);
+		}
 
-			SortUtility.Sort(types.Slice(0, includeTypes.Length));
-			SortUtility.Sort(types.Slice(includeTypes.Length));
+		/// <summary>
+		/// Gets current entity count of a query by
+		/// a summing the entity count in all matching archetypes.
+		/// </summary>
+		/// <remarks>
+		/// Updates the query cache.
+		/// </remarks>
+		/// <param name="query">The query.</param>
+		/// <returns>The number of entities.</returns>
+		public int GetEntityCount(EntityQuery query)
+		{
+			var qry = GetQueryInternal(query);
+
+			UpdateQueryCache(qry);
+
+			var entityCount = 0;
+
+			for(int i = 0; i < qry->archetypeList.count; ++i)
+				entityCount += qry->archetypeList.archetypes[i]->entityCount;
+
+			return entityCount;
+		}
+
+		/// <summary>
+		/// Copies entities of the specified query to the buffer.
+		/// </summary>
+		/// <remarks>
+		/// Updates the query cache.
+		/// </remarks>
+		/// <param name="query">The query.</param>
+		/// <param name="entities">The destination buffer.</param>
+		/// <returns>The number of copied entities.</returns>
+		public int GetEntities(EntityQuery query, Span<Entity> entities)
+		{
+			var qry = GetQueryInternal(query);
+			UpdateQueryCache(qry);
 			
-			// TODO: Same as archetypes: Allow only distinct types.
+			var count = 0;
 
-			return CreateQueryInternal(types, includeTypes.Length, excludeTypes.Length);
+			for(int i = 0; i < qry->archetypeList.count && count < entities.Length; ++i)
+				count += GetEntitiesInternal(qry->archetypeList.archetypes[i], entities.Slice(count));
+
+			return count;
 		}
 
-		internal EntityQuery CreateQueryInternal(Span<int> types, int includeTypesCount, int excludeTypesCount)
+		/// <summary>
+		/// Returns a single entity of the specified query.
+		/// </summary>
+		/// <param name="query">The query.</param>
+		/// <returns>An entity included in the query or the default entity.</returns>
+		public Entity GetEntity(EntityQuery query)
 		{
-			int hashCode = GetQueryTypeHash(types.Slice(0, includeTypesCount), types.Slice(includeTypesCount));
-
-			if(this.queryCache->typeLookup.TryGet(hashCode, out EntityQuery query))
-				return query;
-
-			this.queryCache->EnsureCapacity();
-
-			int index = this.queryCache->count++;
-
-			// InitBlock the struct?
-			EntityQueryData* queryData = this.queryCache->queries + index;
-			queryData->matchedArchetypeCount = 0;
-			queryData->archetypeCount = 0;
-			queryData->includeTypesCount = includeTypesCount;
-			queryData->excludeTypesCount = excludeTypesCount;
-			queryData->componentTypes = null;
-			queryData->archetypes = MemoryUtility.MallocPtrArray<Archetype>(0); // This is dumb but works, otherwise realloc throws.
-
-			if(types.Length > 0) // Because Marshal.AllocHGlobal(0) does not return IntPtr.Zero.
-			{
-				queryData->componentTypes = MemoryUtility.Malloc<int>(types.Length);
-				types.CopyTo(new Span<int>(queryData->componentTypes, types.Length));
-			}
-
-			MatchArchetypesToQueryData(queryData); // Lazy?
-
-			query = new EntityQuery(index);
-
-			this.queryCache->typeLookup.Add(hashCode, query);
-
-			return query;
-		}
-
-		internal EntityQueryData* GetUpdatedQueryData(EntityQuery query)
-		{
-			var queryData = &this.queryCache->queries[query.index];
-			MatchArchetypesToQueryData(queryData);
-			return queryData;
-		}
-
-		internal static void AppendArchetypesToQueryData(EntityQueryData* queryData, Archetype** archetypes, int count)
-		{
-			var size = count * sizeof(Archetype*);
-			queryData->archetypes = MemoryUtility.ReallocPtrArray<Archetype>(queryData->archetypes, queryData->archetypeCount + count);
-			Buffer.MemoryCopy(archetypes, queryData->archetypes + queryData->archetypeCount, size, size);
-			queryData->archetypeCount += count;
-		}
-
-		internal void MatchArchetypesToQueryData(EntityQueryData* queryData)
-		{
-			var count = this.archetypeStore->count;
-			var unmatchedArchetypeCount = count - queryData->matchedArchetypeCount;
-			var archetypes = this.archetypeStore->archetypes + queryData->matchedArchetypeCount;
-
-			// Update the query data to the current archetype count. This only
-			// works because a created archetype cannot be removed.
-			queryData->matchedArchetypeCount = count;
-
-			if(unmatchedArchetypeCount == 0) // Can this be done better?
-				return;
-
-			var matchCount = 0;
-
-			if(unmatchedArchetypeCount <= 16)
-			{
-				var matchingArchetypes = stackalloc Archetype*[unmatchedArchetypeCount];
-
-				for(int i = 0; i < unmatchedArchetypeCount; ++i, ++archetypes) // This loop can be written shorter and better!
-				{
-					if(ArchetypeMatchesQueryFilter(archetypes, queryData))
-						matchingArchetypes[matchCount++] = archetypes;
-				}
-				
-				AppendArchetypesToQueryData(queryData, matchingArchetypes, matchCount);
-			} else {
-				var matchingArchetypes = MemoryUtility.MallocPtrArray<Archetype>(unmatchedArchetypeCount);
-
-				for(int i = 0; i < unmatchedArchetypeCount; ++i, ++archetypes)
-				{
-					if(ArchetypeMatchesQueryFilter(archetypes, queryData))
-						matchingArchetypes[matchCount++] = archetypes;
-				}
-				
-				AppendArchetypesToQueryData(queryData, matchingArchetypes, matchCount);
-
-				MemoryUtility.Free(matchingArchetypes);
-			}
-		}
-
-		internal static bool ArchetypeMatchesQueryFilter(Archetype* archetype, EntityQueryData* query)
-		{
-			if(query->includeTypesCount > archetype->componentCount)
-				return false;
-
-			var includeTypes = query->componentTypes;
+			Span<Entity> buffer = stackalloc Entity[1];
+			var found = GetEntities(query, buffer);
 			
-			// TODO: SSE2
-			// if sorted save i and j and increment...
-
-			for(int i = 0; i < query->includeTypesCount; ++i)
-			{
-				for(int j = 0; j < archetype->componentCount; ++j)
-					if(includeTypes[i] == archetype->componentTypes[j])
-						goto matched;
-
-				return false;
-				matched:
-					continue;
-			}
-
-			var excludeTypes = query->componentTypes + query->includeTypesCount;
-
-			for(int i = 0; i < query->excludeTypesCount; ++i)
-			{
-				for(int j = 0; j < archetype->componentCount; ++j)
-					if(excludeTypes[i] == archetype->componentTypes[j])
-						return false;
-			}
-
-			return true;
+			return found > 0 ? buffer[0] : default;
 		}
 
-		/*
-		internal void MatchArchetypesToQueryData(EntityQueryData* queryData)
+		/// <summary>
+		/// Gets the matching archetype count of a query.
+		/// </summary>
+		/// <remarks>
+		/// Updates the query cache.
+		/// </remarks>
+		/// <param name="query">The query.</param>
+		/// <returns>The number of archetypes.</returns>
+		public int GetArchetypeCount(EntityQuery query)
 		{
-			// TODO: Add SIMD intrinsics and rework the matching process.
+			var qry = GetQueryInternal(query);
+			UpdateQueryCache(qry);
 
-			var count = this.archetypeStore->count;
-			var archetypes = this.archetypeStore->archetypes;
-			var componentTypes = new Span<int>(queryData->componentTypes, queryData->componentCount);
-			var uncheckedArchetypes = this.archetypeStore->count - queryData->matchedArchetypeCount;
-			var skipArchetypes = queryData->matchedArchetypeCount;
+			return qry->archetypeList.count;
+		}
 
-			// Update the query data to the current archetype count. This only
-			// works because a created archetype cannot be removed.
-			queryData->matchedArchetypeCount = count;
+		/// <summary>
+		/// Copies matching archetypes of the specified query to the buffer.
+		/// </summary>
+		/// <remarks>
+		/// Updates the query cache.
+		/// </remarks>
+		/// <param name="query">The query.</param>
+		/// <param name="archetypes">The destination buffer.</param>
+		/// <returns>The number of copied archetypes.</returns>
+		public int GetArchetypes(EntityQuery query, Span<EntityArchetype> archetypes)
+		{
+			var qry = GetQueryInternal(query);
+			UpdateQueryCache(qry);
 
-			if(uncheckedArchetypes <= 16)
+			var count = archetypes.Length > qry->archetypeList.count ? qry->archetypeList.count : archetypes.Length;
+
+			for(int i = 0; i < count; ++i)
+				archetypes[i] = new EntityArchetype(qry->archetypeList.archetypes[i]->index);
+
+			return count;
+		}
+
+		internal void CreateUniversialQuery()
+		{
+			CreateQueryInternal(null, 0, null, 0);
+		}
+
+		internal void UpdateQueryCache(Query* query)
+		{
+			if(query->index == 0) // Rework if query is stored somewhere.
 			{
-				// If only a few archetypes have been added preallocate the
-				// archetype array.
-				if(uncheckedArchetypes > 0)
-				{
-					int requiredCapacity = queryData->archetypeCount + uncheckedArchetypes;
-					queryData->archetypeCapacity = MemoryUtility.RoundToPowerOfTwo(requiredCapacity); // I think this could be = requiredCapacity
-					queryData->archetypes = MemoryUtility.ReallocPtrArray(queryData->archetypes, queryData->archetypeCapacity);
-				}
-
-				for(int i = skipArchetypes; i < count; ++i)
-				{
-					if(ArchetypeUtility.MatchesComponentTypes(&archetypes[i], componentTypes))
-					{
-						var index = queryData->archetypeCount++;
-						queryData->archetypes[index] = &archetypes[i];
-					}
-				}
-
+				query->archetypeList.archetypes = this.archetypeStore.archetypes;
+				query->archetypeList.count = this.archetypeStore.count;
+				query->knownArchetypeCount = this.archetypeStore.count;
 				return;
 			}
 
-			for(int i = skipArchetypes; i < count; ++i)
+			if(query->knownArchetypeCount < this.archetypeStore.count)
 			{
-				if(ArchetypeUtility.MatchesComponentTypes(&archetypes[i], componentTypes))
+				var diffArchetypeCount = this.archetypeStore.count - query->knownArchetypeCount;
+				var archetypes = this.archetypeStore.archetypes + query->knownArchetypeCount;
+				
+				query->knownArchetypeCount = this.archetypeStore.count;
+
+				for(int i = 0; i < diffArchetypeCount; ++i)
 				{
-					var index = queryData->archetypeCount++;
-					var capacity = queryData->archetypeCapacity;
-
-					if(index == capacity)
-					{
-						queryData->archetypeCapacity = capacity * 2;
-						queryData->archetypes = MemoryUtility.ReallocPtrArray(queryData->archetypes, queryData->archetypeCapacity);
-					}
-
-					queryData->archetypes[index] = &archetypes[i];
+					if(QueryUtility.Matches(query, archetypes[i]))
+						query->archetypeList.Add(archetypes[i]);
 				}
 			}
 		}
-		*/
 	}
 }

@@ -1,186 +1,269 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Xunit;
 
 namespace Checs.Tests
 {
-	public partial class EntityManagerTests
+	public partial class EntityManagerTests_Entities
 	{
-		[Fact]
-		public void EntitiesAreUnique()
-		{
-			using EntityManager manager = new EntityManager();
-
-			var entities = manager.CreateEntity(100);
-			var distinct = new HashSet<Entity>(entities.ToArray());
-
-			Assert.Equal(entities.Length, distinct.Count);
-
-			var entities2 = manager.CreateEntity(100);
-			distinct.UnionWith(entities2.ToArray());
-
-			Assert.Equal(entities.Length + entities2.Length, distinct.Count);
-
-			var entities3 = manager.CreateEntity(manager.CreateArchetype(typeof(Position)), 100);
-			distinct.UnionWith(entities3.ToArray());
-
-			Assert.Equal(entities.Length + entities2.Length + entities3.Length, distinct.Count);
-		}
-
-		[Fact]
-		public void EntitiesAreDestroyable()
-		{
-			using EntityManager manager = new EntityManager();
-
-			var entity = manager.CreateEntity();
-			
-			Assert.True(manager.IsAlive(entity));
-
-			manager.DestroyEntity(entity);
-
-			Assert.False(manager.IsAlive(entity));
-
-			var entities = new Entity[100];
-
-			manager.CreateEntity(entities);
-
-			Assert.All(entities, x => Assert.True(manager.IsAlive(x)));
-
-			manager.DestroyEntity(entities);
-
-			Assert.All(entities, x => Assert.False(manager.IsAlive(x)));
-		}
-
-		[Fact]
-		public void EntitiesAreRecycable()
-		{
-			using EntityManager manager = new EntityManager();
-
-			var destroyedEntity = manager.CreateEntity();
-
-			manager.DestroyEntity(destroyedEntity);
-
-			var aliveEntity = manager.CreateEntity();
-			
-			Assert.False(manager.IsAlive(destroyedEntity));
-			Assert.True(manager.IsAlive(aliveEntity));
-
-			Assert.Equal(destroyedEntity.index, aliveEntity.index);
-			Assert.NotEqual(destroyedEntity.version, aliveEntity.version);
-			Assert.NotEqual(destroyedEntity, aliveEntity);
-
-			var entityBatch = manager.CreateEntity(100);
-			destroyedEntity = entityBatch[10];
-
-			manager.DestroyEntity(destroyedEntity);
-
-			aliveEntity = manager.CreateEntity();
-			
-			Assert.False(manager.IsAlive(destroyedEntity));
-			Assert.True(manager.IsAlive(aliveEntity));
-
-			Assert.Equal(destroyedEntity.index, aliveEntity.index);
-			Assert.NotEqual(destroyedEntity.version, aliveEntity.version);
-			Assert.NotEqual(destroyedEntity, aliveEntity);
-		}
-
-		[Fact]
-		public void EntitiesIndiciesAreSequentialOrRecycled()
-		{
-			using EntityManager manager = new EntityManager();
-
-			var entities = new Entity[3];
-			manager.CreateEntity(entities);
-
-			Assert.Equal(0, entities[0].index);
-			Assert.Equal(1, entities[1].index);
-			Assert.Equal(2, entities[2].index);
-
-			manager.DestroyEntity(entities);
-			manager.CreateEntity(entities);
-
-			Assert.Equal(0, entities[0].index);
-			Assert.Equal(1, entities[1].index);
-			Assert.Equal(2, entities[2].index);
-			
-			manager.DestroyEntity(entities);
-
-			var batch1 = new Entity[100];
-			var batch2 = new Entity[100];
-			var batch3 = new Entity[101];
-
-			manager.CreateEntity(batch1);
-			manager.CreateEntity(batch2);
-
-			Assert.Equal(0, batch1[0].index);
-			Assert.Equal(100, batch2[0].index);
-
-			manager.DestroyEntity(batch1);
-
-			unsafe {
-			Assert.Equal(100, manager.entityStore->freeSlots.count);
-			Assert.Equal(200, manager.entityStore->count);}
-
-			manager.CreateEntity(batch3);
-
-			Assert.Equal(0, batch3[0].index);
-			Assert.Equal(200, batch3[batch3.Length - 1].index);
-		}
-
-		[Fact]
-		public void EntityVersionMatchesStoreVersion() // Move to EntityStoreTest?
-		{
-			using EntityManager manager = new EntityManager();
-
-			var entity = manager.CreateEntity();
-
-			unsafe
-			{
-				Assert.Equal(entity.version, manager.entityStore->version);
-			}
-
-			manager.DestroyEntity(entity);
-
-			var entities = new Entity[123];
-			manager.CreateEntity(entities);
-
-			unsafe
-			{
-				Assert.All(entities, x => Assert.Equal(x.version, manager.entityStore->version));
-			}
-		}
-
 		[Fact]
 		public void DefaultEntityIsNotAlive()
 		{
 			using EntityManager manager = new EntityManager();
 
-			Entity entity = default;
+			var entity = new Entity();
 
-			Assert.False(manager.IsAlive(entity));
+			Assert.False(manager.Exists(entity));
+			
+			manager.CreateEntity();
 
-			var entities = manager.CreateEntity(10);
-
-			Assert.False(manager.IsAlive(entity));
-
-			manager.DestroyEntity(entities);
-
-			Assert.False(manager.IsAlive(entity));
+			Assert.False(manager.Exists(entity));
 		}
 
 		[Fact]
-		public void EntityDataIsStoredInChunk()
+		public void Creatable()
 		{
 			using EntityManager manager = new EntityManager();
 
-			var entities = manager.CreateEntity(100);
+			{
+				var entity = manager.CreateEntity();
 
-			Assert.Equal(99, entities[entities.Length - 1].index);
+				Assert.True(manager.Exists(entity));
+				Assert.Equal(0, entity.index);
+				
+			}
 
-			manager.ForEach(manager.CreateArchetype(), (batch) => {
-				Assert.Equal(100, batch.length);
-				Assert.Equal(99, batch.GetEntities()[batch.length - 1].index);
-			});
+			{
+				var entityCount = manager.entityCount;
+				var entities = new Entity[100];
+				manager.CreateEntity(entities);
+
+				Assert.All(entities, x => Assert.True(manager.Exists(x)));
+				Assert.Equal(entityCount + entities.Length, manager.entityCount);
+			}
+
+			{
+				var archetype = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var entity = manager.CreateEntity(archetype);
+
+				Assert.True(manager.Exists(entity));
+				Assert.Equal(archetype, manager.GetArchetype(entity));
+			}
+
+			{
+				var entities = new Entity[10000];
+				manager.CreateEntity(entities);
+
+				Assert.Equal(entities[entities.Length - 1].index, entities[0].index + entities.Length - 1);
+			}
+		}
+
+		[Fact]
+		public void Destroyable()
+		{
+			using EntityManager manager = new EntityManager();
+
+			{
+				var entity = manager.CreateEntity();
+							
+				manager.DestroyEntity(entity);
+
+				Assert.False(manager.Exists(entity));
+			}
+
+			{
+				var entities = new Entity[100];
+
+				manager.CreateEntity(entities);
+
+				var entityCount = manager.entityCount;
+
+				manager.DestroyEntity(entities);
+
+				Assert.All(entities, x => Assert.False(manager.Exists(x)));
+				Assert.Equal(entityCount - entities.Length, manager.entityCount);
+			}
+
+			{
+				var entities = new Entity[10];
+				var archetype = manager.CreateArchetype();
+
+				manager.CreateEntity(archetype, entities);
+				manager.DestroyEntity(archetype);
+
+				Assert.All(entities, x => Assert.False(manager.Exists(x)));
+				Assert.Equal(0, manager.GetEntityCount(archetype));
+			}
+
+			{
+				var entities = new Entity[10];
+				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
+				var query = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>()
+				});
+
+				manager.CreateEntity(archetype, entities);
+				manager.DestroyEntity(query);
+
+				Assert.All(entities, x => Assert.False(manager.Exists(x)));
+				Assert.Equal(0, manager.GetEntityCount(query)); 
+			}
+		}
+
+		[Fact]
+		public void Instantiable()
+		{
+			using EntityManager manager = new EntityManager();
+
+			{
+				var archetype = manager.CreateArchetype();
+				var entity = manager.CreateEntity(archetype);
+				var entityCount = manager.GetEntityCount(archetype);
+				
+				manager.Instantiate(entity, 10);
+
+				Assert.Equal(entityCount + 10, manager.GetEntityCount(archetype));
+			}
+
+			{
+				var archetype = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>(),
+					ComponentType.Of<Scale>()
+				});
+				var entity = manager.CreateEntity(archetype);
+
+				var position = new Position(1000f, 2000f, 3000f);
+				var rotation = new Rotation(10f, 100f, 1000f, 10000f);
+				var scale = new Scale(-100f, -10f, -1f);
+			
+				manager.SetComponentData<Position>(entity, position);
+				manager.SetComponentData<Rotation>(entity, rotation);
+				manager.SetComponentData<Scale>(entity, scale);
+
+				var instances = new Entity[100];
+				manager.Instantiate(entity, instances);
+			
+				Assert.All(instances, x => {
+					Assert.Equal(position, manager.GetComponentData<Position>(x));
+					Assert.Equal(rotation, manager.GetComponentData<Rotation>(x));
+					Assert.Equal(scale, manager.GetComponentData<Scale>(x));
+				});
+			}
+		}
+
+		[Fact]
+		public void Movable()
+		{
+			using EntityManager manager = new EntityManager();
+
+			{
+				var entity = manager.CreateEntity();
+				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
+							
+				manager.MoveEntity(entity, archetype);
+
+				Assert.True(manager.Exists(entity));
+				Assert.Equal(archetype, manager.GetArchetype(entity));
+			}
+
+			{
+				var entities = new Entity[100];
+				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
+
+				manager.CreateEntity(entities);
+
+				var entityCount = manager.entityCount;
+
+				manager.MoveEntity(entities, archetype);
+
+				Assert.All(entities, x => Assert.Equal(archetype, manager.GetArchetype(x)));
+				Assert.Equal(entityCount, manager.entityCount);
+			}
+
+			{
+				var lhs = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var rhs = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Scale>()
+				});
+
+				var entity = manager.CreateEntity(lhs);
+
+				manager.MoveEntity(entity, rhs);
+
+				Assert.Equal(rhs, manager.GetArchetype(entity));
+			}
+		}
+
+		[Fact]
+		public void Unique()
+		{
+			using EntityManager manager = new EntityManager();
+
+			{
+				var lhs = manager.CreateEntity();
+				var rhs = manager.CreateEntity();
+
+				Assert.NotEqual(lhs, rhs);
+			}
+
+			{
+				var entities = new Entity[100];
+				manager.CreateEntity(entities);
+
+				Assert.Equal(entities.Length, entities.Distinct().Count());
+			}
+
+			{
+				var lhs = new Entity[20];
+				var rhs = new Entity[30];
+				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
+
+				manager.CreateEntity(lhs);
+				manager.CreateEntity(archetype, rhs);
+
+				Assert.Equal(lhs.Length + rhs.Length, lhs.Union(rhs).Count());
+			}
+		}
+
+		[Fact]
+		public void Recycable()
+		{
+			using EntityManager manager = new EntityManager();
+
+			{
+				var dead = manager.CreateEntity();
+				manager.DestroyEntity(dead);
+
+				var alive = manager.CreateEntity();
+
+				Assert.Equal(dead.index, alive.index);
+				Assert.NotEqual(dead.version, alive.version);
+			}
+
+			{
+				var entities = new Entity[100];
+
+				manager.CreateEntity(entities);
+
+				var dead = entities[entities.Length - 1];
+
+				manager.DestroyEntity(entities);
+				manager.CreateEntity(entities);
+
+				var alive = entities[entities.Length - 1];
+
+				Assert.Equal(dead.index, alive.index);
+				Assert.NotEqual(dead.version, alive.version);
+			}
 		}
 	}
 }

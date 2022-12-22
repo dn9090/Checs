@@ -4,17 +4,7 @@ namespace Checs.Tests
 {
 #pragma warning disable CS0169
 
-	public struct Layer : IComponentData
-	{
-		public int value;
-
-		public Layer(int value)
-		{
-			this.value = value;
-		}
-	}
-
-	public struct Position : IComponentData
+	public struct Position
 	{
 		public float x;
 
@@ -28,9 +18,14 @@ namespace Checs.Tests
 			this.y = y;
 			this.z = z;
 		}
+
+		public override string ToString()
+		{
+			return "<" + this.x + "," + this.y + "," + this.z + ">";
+		}
 	}
 
-	public struct Rotation : IComponentData
+	public struct Rotation
 	{
 		public float x;
 
@@ -47,9 +42,14 @@ namespace Checs.Tests
 			this.z = z;
 			this.w = w;
 		}
+
+		public override string ToString()
+		{
+			return "<" + this.x + "," + this.y + "," + this.z + "," + this.w + ">";
+		}
 	}
 
-	public struct Velocity : IComponentData
+	public struct Velocity
 	{
 		public float x;
 
@@ -63,55 +63,73 @@ namespace Checs.Tests
 			this.y = y;
 			this.z = z;
 		}
-	}
 
-	public struct Line : IComponentData
-	{
-		public Position start;
-
-		public Position end;
-
-		public Line(Position start, Position end)
+		public override string ToString()
 		{
-			this.start = start;
-			this.end = end;
+			return "<" + this.x + "," + this.y + "," + this.z + ">";
 		}
 	}
 
-	public struct Hitpoints : IComponentData
+	public struct Scale
+	{
+		public float x;
+
+		public float y;
+
+		public float z;
+
+		public Scale(float x, float y, float z)
+		{
+			this.x = x;
+			this.y = y;
+			this.z = z;
+		}
+
+		public override string ToString()
+		{
+			return "<" + this.x + "," + this.y + "," + this.z + ">";
+		}
+	}
+
+	public struct Health
 	{
 		public int value;
 
-		public Hitpoints(int value)
+		public Health(int value)
 		{
 			this.value = value;
 		}
 	}
 
-	public struct ComponentA : IComponentData { int value; }
-	public struct ComponentB : IComponentData { int value; }
-	public struct ComponentC : IComponentData { int value; }
-	public struct ComponentD : IComponentData { int value; }
-	public struct ComponentE : IComponentData { int value; }
-	public struct ComponentF : IComponentData { int value; }
-	public struct ComponentG : IComponentData { int value; }
-	public struct ComponentH : IComponentData { int value; }
-	public struct ComponentI : IComponentData { int value; }
-	public struct ComponentJ : IComponentData { int value; }
-	public struct ComponentK : IComponentData { int value; }
-	public struct ComponentL : IComponentData { int value; }
-	public struct ComponentM : IComponentData { int value; }
-	public struct ComponentN : IComponentData { int value; }
-	public struct ComponentO : IComponentData { int value; }
-	public struct ComponentP : IComponentData { int value; }
-	public struct ComponentQ : IComponentData { int value; }
-	public struct ComponentR : IComponentData { int value; }
-	public struct ComponentS : IComponentData { int value; }
-	public struct ComponentT : IComponentData { int value; }
-	public struct ComponentU : IComponentData { int value; }
-	public struct ComponentV : IComponentData { int value; }
-	public struct ComponentW : IComponentData { int value; }
-	public struct ComponentX : IComponentData { int value; }
-	public struct ComponentY : IComponentData { int value; }
-	public struct ComponentZ : IComponentData { int value; }
+	public struct Generic<T> where T : unmanaged
+	{
+		public T value;
+	}
+
+	public struct ComponentA { int value; }
+	public struct ComponentB { int value; }
+	public struct ComponentC { int value; }
+	public struct ComponentD { int value; }
+	public struct ComponentE { int value; }
+	public struct ComponentF { int value; }
+	public struct ComponentG { int value; }
+	public struct ComponentH { int value; }
+	public struct ComponentI { int value; }
+	public struct ComponentJ { int value; }
+	public struct ComponentK { int value; }
+	public struct ComponentL { int value; }
+	public struct ComponentM { int value; }
+	public struct ComponentN { int value; }
+	public struct ComponentO { int value; }
+	public struct ComponentP { int value; }
+	public struct ComponentQ { int value; }
+	public struct ComponentR { int value; }
+	public struct ComponentS { int value; }
+	public struct ComponentT { int value; }
+	public struct ComponentU { int value; }
+	public struct ComponentV { int value; }
+	public struct ComponentW { int value; }
+	public struct ComponentX { int value; }
+	public struct ComponentY { int value; }
+	public struct ComponentZ { int value; }
 }

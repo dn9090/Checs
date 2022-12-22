@@ -1,40 +1,94 @@
 using System;
 using System.Runtime.InteropServices;
-using System.Threading;
+using System.Runtime.CompilerServices;
 
 namespace Checs
 {
-	[StructLayout(LayoutKind.Sequential)]
+	[StructLayout(LayoutKind.Explicit)]
 	internal unsafe struct Archetype : IDisposable
 	{
-		public ArchetypeChunkArray* chunkArray; // Place directly in Archetype (should still be smaller than a cache line)?
+		[FieldOffset(0)]
+		public int index;
 
+		[FieldOffset(4)]
 		public int chunkCapacity;
 
+		[FieldOffset(8)]
 		public int entityCount;
 
-		public int componentHashCode;
-
+		[FieldOffset(12)]
 		public int componentCount;
 
-		public int* componentTypes; // Allocate arrays in the same memory block as the archetype struct?
+		[FieldOffset(16)]
+		public ChangeVersion* changeVersion;
+		
+		[FieldOffset(32)]
+		public ChunkList chunkList;
 
-		public int* componentSizes;
+		[FieldOffset(64)]
+		public fixed byte buffer[4];
 
-		public int* componentOffsets;
+		public const int Size = 64;
+
+		public const int Alignment = 64;
+
+		public const int ComponentDataCount = 4;
 
 		public void Dispose()
 		{
-			this.chunkArray->Dispose();
+			this.chunkList.Dispose();
+		}
 
-			MemoryUtility.Free<ArchetypeChunkArray>(this.chunkArray);
+		public static void Construct(Archetype* archetype, ChangeVersion* changeVersion,
+			uint* componentHashCodes, int* componentSizes, int componentCount, int chunkCapacity)
+		{
+			archetype->entityCount = 0;
+			archetype->chunkCapacity = chunkCapacity;
+			archetype->chunkList = new ChunkList();
+			archetype->changeVersion = changeVersion;
+			archetype->componentCount = componentCount;
 
-			if(this.componentCount > 0)
-			{
-				MemoryUtility.Free(this.componentTypes);
-				MemoryUtility.Free(this.componentSizes);
-				MemoryUtility.Free(this.componentOffsets);
-			}
+			var hashCodes = GetComponentHashCodes(archetype);
+			var sizes     = GetComponentSizes(archetype);
+			var offsets   = GetComponentOffsets(archetype);
+			var versions  = GetComponentVersions(archetype);
+			var byteCount = componentCount * sizeof(int);
+
+			Unsafe.CopyBlockUnaligned(hashCodes, componentHashCodes, (uint)byteCount);
+			Unsafe.CopyBlockUnaligned(sizes, componentSizes, (uint)byteCount);
+			Unsafe.InitBlockUnaligned(versions, 0, (uint)byteCount);
+
+			ArchetypeUtility.CalculateComponentOffsets(sizes, offsets, componentCount, chunkCapacity);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int SizeOfBuffer(int componentCount)
+		{
+			return sizeof(int) * ComponentDataCount * componentCount;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static uint* GetComponentHashCodes(Archetype* archetype)
+		{
+			return (uint*)archetype->buffer;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int* GetComponentSizes(Archetype* archetype)
+		{
+			return (int*)archetype->buffer + archetype->componentCount;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int* GetComponentOffsets(Archetype* archetype)
+		{
+			return (int*)archetype->buffer + (archetype->componentCount << 1);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int* GetComponentVersions(Archetype* archetype)
+		{
+			return (int*)archetype->buffer + (archetype->componentCount << 2);
 		}
 	}
 }

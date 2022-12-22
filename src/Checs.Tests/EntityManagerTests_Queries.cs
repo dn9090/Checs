@@ -4,169 +4,315 @@ using Xunit;
 
 namespace Checs.Tests
 {
-	public partial class EntityManagerTests
+	public partial class EntityManagerTests_Queries
 	{
 		[Fact]
-		public void QueriesAreEqual()
+		public void Equal()
 		{
 			using EntityManager manager = new EntityManager();
 
-			Assert.Equal(manager.CreateQuery(), manager.CreateQuery());
-
-			var leftOnlyInclude = manager.CreateQuery(new Type[] { typeof(Position), typeof(Rotation), typeof(Velocity) });
-			var rightOnlyInclude = manager.CreateQuery(new Type[] { typeof(Velocity), typeof(Rotation), typeof(Position) });
-
-			Assert.Equal(leftOnlyInclude, rightOnlyInclude);
-
-			var leftWithExclude = manager.CreateQuery(new Type[] { typeof(Position) },
-				new Type[] { typeof(Rotation), typeof(Velocity) });
-			var rightWithExclude = manager.CreateQuery(new Type[] { typeof(Position) },
-				new Type[] { typeof(Velocity), typeof(Rotation) });
-
-			Assert.Equal(leftWithExclude, rightWithExclude);
-		}
-
-		[Fact]
-		public void QueriesMatchArchetype()
-		{
-			using EntityManager manager = new EntityManager();
-
-			var emptyArchetype = manager.CreateArchetype();
-			var emptyQuery = manager.CreateQuery();
-
-			Assert.True(manager.MatchesQuery(emptyQuery, emptyArchetype));
-
-			var includesArchetype = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation) });
-			var includesQuery = manager.CreateQuery(new Type[] { typeof(Position), typeof(Rotation) });
-
-			Assert.True(manager.MatchesQuery(includesQuery, includesArchetype));
-
-			var excludesArchetype = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation) });
-			var excludesQuery = manager.CreateQuery(Array.Empty<Type>(), new Type[] { typeof(Velocity) });
-
-			Assert.True(manager.MatchesQuery(excludesQuery, excludesArchetype));
-		}
-
-		[Fact]
-		public void QueriesIncludeArchetype()
-		{
-			using EntityManager manager = new EntityManager();
-
-			var archetype = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation), typeof(Velocity) });
-			var query = manager.CreateQuery(new Type[] { typeof(Position), typeof(Rotation) });
-
-			Assert.True(manager.MatchesQuery(query, archetype));
-
-			archetype = manager.CreateArchetype(new Type[] { typeof(Rotation), typeof(Velocity) });
-			query = manager.CreateQuery(new Type[] { typeof(Position), typeof(Rotation) });
-
-			Assert.False(manager.MatchesQuery(query, archetype));
-		}
-
-		[Fact]
-		public void QueriesExcludeArchetype()
-		{
-			using EntityManager manager = new EntityManager();
-
-			var archetype = manager.CreateArchetype(new Type[] { typeof(Rotation), typeof(Velocity) });
-			var query = manager.CreateQuery(Array.Empty<Type>(), new Type[] { typeof(Position) });
-
-			Assert.True(manager.MatchesQuery(query, archetype));
-
-			archetype = manager.CreateArchetype(new Type[] { typeof(Rotation), typeof(Velocity) });
-			query = manager.CreateQuery(new Type[] { typeof(Position), typeof(Rotation) });
-
-			Assert.False(manager.MatchesQuery(query, archetype));
-		}
-
-		[Fact]
-		public void SupportsALotOfQueries()
-		{
-			using EntityManager manager = new EntityManager();
-
-			var types = new Type[] {
-				typeof(ComponentA), typeof(ComponentB),
-				typeof(ComponentC), typeof(ComponentD),
-				typeof(ComponentE), typeof(ComponentF),
-				typeof(ComponentG), typeof(ComponentH),
-				typeof(ComponentI), typeof(ComponentJ),
-				typeof(ComponentK), typeof(ComponentL),
-				typeof(ComponentM), typeof(ComponentN),
-				typeof(ComponentO), typeof(ComponentP),
-				typeof(ComponentQ), typeof(ComponentR),
-				typeof(ComponentS), typeof(ComponentT),
-				typeof(ComponentU), typeof(ComponentV),
-				typeof(ComponentW), typeof(ComponentX),
-				typeof(ComponentY), typeof(ComponentZ)
-			};
-
-			var queryCount = 0;
-
-			for(int i = 0; i < types.Length; ++i, ++queryCount)
-				manager.CreateQuery(types.AsSpan().Slice(i, 1));
-
-			for(int i = 0; i < types.Length - 1; i += 2, ++queryCount)
-				manager.CreateQuery(types.AsSpan().Slice(i, 2));
-
-			for(int i = 0; i < types.Length - 2; i += 3, ++queryCount)
-				manager.CreateQuery(types.AsSpan().Slice(i, 3));
-
-			for(int i = 0; i < types.Length - 3; i += 4, ++queryCount)
-				manager.CreateQuery(types.AsSpan().Slice(i, 4));
-
-			unsafe
 			{
-				Assert.Equal(queryCount + 1, manager.queryCache->count); // These are bad tests...
-				Assert.True(manager.entityStore->capacity >= queryCount);
+				var lhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var rhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+
+				Assert.Equal(lhs, rhs);
+			}
+
+			{
+				var lhs = manager.CreateQuery(excludeTypes: new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var rhs = manager.CreateQuery(excludeTypes: new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+
+				Assert.Equal(lhs, rhs);
+			}
+
+			{
+				var lhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				}, new[] {
+					ComponentType.Of<Scale>(),
+					ComponentType.Of<Velocity>()
+				});
+				var rhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				}, new[] {
+					ComponentType.Of<Scale>(),
+					ComponentType.Of<Velocity>()
+				});
+
+				Assert.Equal(lhs, rhs);
+			}
+
+			{
+				var lhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>()
+				});
+				var rhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Position>()
+				});
+
+				Assert.Equal(lhs, rhs);
+			}
+
+			{
+				var lhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var rhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>(),
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+
+				Assert.Equal(lhs, rhs);
+			}
+
+			{
+				var lhs = manager.CreateQuery(excludeTypes: new[] {
+					ComponentType.Of<Position>()
+				});
+				var rhs = manager.CreateQuery(excludeTypes: new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Position>()
+				});
+
+				Assert.Equal(lhs, rhs);
+			}
+
+			{
+				var lhs = manager.CreateQuery(excludeTypes: new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var rhs = manager.CreateQuery(excludeTypes: new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>(),
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+
+				Assert.Equal(lhs, rhs);
 			}
 		}
 
 		[Fact]
-		public void DefaultQueryMatchesAllEntities()
+		public void MatchArchetype()
 		{
 			using EntityManager manager = new EntityManager();
 
-			var entities = new Entity[100000];
+			{
+				var archetype = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var includeQuery = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var excludeQuery = manager.CreateQuery(excludeTypes: new[] {
+					ComponentType.Of<Scale>(),
+					ComponentType.Of<Velocity>()
+				});
 
-			var archetype1 = manager.CreateArchetype(new Type[] { typeof(Position) });
-			var archetype2 = manager.CreateArchetype(new Type[] { typeof(Rotation) });
-			var archetype3 = manager.CreateArchetype(new Type[] { typeof(Velocity) });
-			var archetype4 = manager.CreateArchetype(new Type[] { typeof(Position), typeof(Rotation), typeof(Velocity) });
+	
+				Assert.True(manager.MatchesQuery(includeQuery, archetype));
+				Assert.True(manager.MatchesQuery(excludeQuery, archetype));
+			}
 
-			manager.CreateEntity(entities.AsSpan().Slice(0, 20000));
-			manager.CreateEntity(archetype1, entities.AsSpan().Slice(20000, 20000));
-			manager.CreateEntity(archetype2, entities.AsSpan().Slice(40000, 20000));
-			manager.CreateEntity(archetype3, entities.AsSpan().Slice(60000, 20000));
-			manager.CreateEntity(archetype4, entities.AsSpan().Slice(80000, 20000));
-
-			Assert.Equal(entities.Length, manager.GetEntityCount(new EntityQuery()));
-			Assert.Equal(entities.Length, manager.GetEntityCount(manager.CreateQuery()));
+			{
+				var archetype = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var includeQuery = manager.CreateQuery(new[] {
+					ComponentType.Of<Scale>(),
+					ComponentType.Of<Velocity>()
+				});
+				var excludeQuery = manager.CreateQuery(excludeTypes: new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+	
+				Assert.False(manager.MatchesQuery(includeQuery, archetype));
+				Assert.False(manager.MatchesQuery(excludeQuery, archetype));
+			}
 		}
 
 		[Fact]
-		public void QueryBuilderIncludesTypes()
+		public void IntersectsQuery()
 		{
 			using EntityManager manager = new EntityManager();
 
-			var builder = new EntityQueryBuilder()
-				.Include<Position>()
-				.Include<Rotation>()
-				.Include<Velocity>();
+			{
+				var lhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var rhs = manager.CreateQuery();
 
-			Assert.True(builder.includeCount == 3);
+	
+				Assert.True(manager.QueriesIntersect(lhs, rhs));
+				Assert.True(manager.QueriesIntersect(rhs, lhs));
+			}
+
+			{
+				var lhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var rhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>()
+				});
+
+	
+				Assert.True(manager.QueriesIntersect(lhs, rhs));
+				Assert.True(manager.QueriesIntersect(rhs, lhs));
+			}
+
+			{
+				var lhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>(),
+					ComponentType.Of<Velocity>(),
+					ComponentType.Of<Scale>()
+				});
+				var rhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Scale>()
+				});
+
+	
+				Assert.True(manager.QueriesIntersect(lhs, rhs));
+				Assert.True(manager.QueriesIntersect(rhs, lhs));
+			}
+
+			{
+				var lhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>(),
+					ComponentType.Of<Velocity>()
+				});
+				var rhs = manager.CreateQuery(includeTypes: new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Velocity>()
+				}, excludeTypes: new[] {
+					ComponentType.Of<Scale>()
+				});
+
+	
+				Assert.True(manager.QueriesIntersect(lhs, rhs));
+				Assert.True(manager.QueriesIntersect(rhs, lhs));
+			}
 		}
 
 		[Fact]
-		public void QueryBuilderExcludesTypes()
+		public void NotIntersectsQuery()
 		{
 			using EntityManager manager = new EntityManager();
 
-			var builder = new EntityQueryBuilder()
-				.Exclude<Position>()
-				.Exclude<Rotation>()
-				.Exclude<Velocity>();
+			{
+				var lhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>()
+				});
+				var rhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Rotation>()
+				});
 
-			Assert.True(builder.excludeCount == 3);
+	
+				Assert.False(manager.QueriesIntersect(lhs, rhs));
+				Assert.False(manager.QueriesIntersect(rhs, lhs));
+			}
+
+			{
+				var lhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var rhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Scale>()
+				});
+
+	
+				Assert.False(manager.QueriesIntersect(lhs, rhs));
+				Assert.False(manager.QueriesIntersect(rhs, lhs));
+			}
+
+			{
+				var lhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>(),
+					ComponentType.Of<Velocity>()
+				});
+				var rhs = manager.CreateQuery(includeTypes: new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				}, excludeTypes: new[] {
+					ComponentType.Of<Velocity>()
+				});
+
+	
+				Assert.False(manager.QueriesIntersect(lhs, rhs));
+				Assert.False(manager.QueriesIntersect(rhs, lhs));
+			}
+
+			{
+				var lhs = manager.CreateQuery(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var rhs = manager.CreateQuery(includeTypes: new[] {
+					ComponentType.Of<Position>(),
+				}, excludeTypes: new[] {
+					ComponentType.Of<Rotation>(),
+					ComponentType.Of<Velocity>()
+				});
+
+	
+				Assert.False(manager.QueriesIntersect(lhs, rhs));
+				Assert.False(manager.QueriesIntersect(rhs, lhs));
+			}
+		}
+
+		[Fact]
+		public void UniversalQueryMatchesAllEntities()
+		{
+			using EntityManager manager = new EntityManager();
+
+			{
+				var archetype = manager.CreateArchetype();
+				var query = manager.CreateQuery();
+
+				Assert.True(manager.MatchesQuery(query, archetype));
+			}
+
+			{
+				var archetype = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>(),
+					ComponentType.Of<Scale>(),
+					ComponentType.Of<Velocity>()
+				});
+				var query = manager.CreateQuery();
+				
+				Assert.True(manager.MatchesQuery(query, archetype));
+			}
 		}
 	}
 }

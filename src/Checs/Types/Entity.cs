@@ -4,11 +4,19 @@ using System.Runtime.InteropServices;
 namespace Checs
 {
 	[StructLayout(LayoutKind.Sequential)]
-	public readonly struct Entity : IEquatable<Entity>, IComparable<Entity>
+	public unsafe readonly struct Entity : IEquatable<Entity>, IComparable<Entity>
 	{
+		internal static Type type = typeof(Entity);
+
+		internal static uint hashCode = (uint)type.GetHashCode();
+
+		internal static TypeInfo info = TypeRegistry<Entity>.info;
+
 		public readonly int index;
 
 		public readonly uint version;
+
+		public bool isNull => version == 0;
 
 		internal Entity(int index, uint version)
 		{
@@ -29,5 +37,10 @@ namespace Checs
 		public bool Equals(Entity other) => this == other;
 
 		public override int GetHashCode() => this.index;
+
+		public override string ToString()
+		{
+			return $"Entity({this.index}:{this.version})";
+		}
 	}
 }
