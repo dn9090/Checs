@@ -29,6 +29,13 @@ namespace Checs
 			this.flags = flags;
 		}
 
+		internal ComponentType(uint hashCode, int size, ComponentFlags flags = ComponentFlags.None)
+		{
+			this.hashCode = hashCode;
+			this.size = size;
+			this.flags = flags;
+		}
+
 		public ComponentType AsBuffer()
 		{
 			var componentType = this;
@@ -59,6 +66,12 @@ namespace Checs
 		public override int GetHashCode()
 		{
 			return (int)this.hashCode;
+		}
+
+		public override string ToString()
+		{
+			var info = TypeRegistry.GetTypeInfo(this.hashCode);
+			return $"ComponentType({info.type.FullName}:{info.hashCode})";
 		}
 
 		public static ComponentType Of<T>()

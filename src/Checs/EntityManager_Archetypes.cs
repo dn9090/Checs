@@ -203,21 +203,31 @@ namespace Checs
 		/// <returns>The number of types in the buffer.</returns>
 		public int GetTypes(EntityArchetype archetype, Span<Type> types)
 		{
-			var arch = GetArchetypeInternal(archetype);
+			var arch      = GetArchetypeInternal(archetype);
 			var hashCodes = Archetype.GetComponentHashCodes(arch);
 
 			return TypeRegistry.GetTypes(hashCodes, arch->componentCount, types);
 		}
 
-		public Type[] GetComponentTypes(EntityArchetype archetype) // Rename to GetTypes and implemenet GetComponentTypes
+		/// <summary>
+		/// Gets the component types in the archetype including the
+		/// <see cref="Entity"/> component type.
+		/// </summary>
+		/// <param name="archetype">The archetype.</param>
+		/// <param name="types">The destination buffer.</param>
+		/// <returns>The number of types in the buffer.</returns>
+		public int GetComponentTypes(EntityArchetype archetype, Span<ComponentType> types)
 		{
-			var arch = GetArchetypeInternal(archetype);
-			var types = new Type[arch->componentCount];
+			var arch      = GetArchetypeInternal(archetype);
 			var hashCodes = Archetype.GetComponentHashCodes(arch);
+			var sizes     = Archetype.GetComponentSizes(arch);
 
-			TypeRegistry.GetTypes(hashCodes, arch->componentCount, types);
+			var count = arch->componentCount > types.Length ? types.Length : arch->componentCount;
 
-			return types;
+			for(int i = 0; i < count; ++i)
+				types[i] = new ComponentType(hashCodes[i], sizes[i]);
+
+			return count;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -249,7 +259,7 @@ namespace Checs
 				return new EntityArchetype(index);
 
 			var chunkCapacity = ChunkUtility.CalculateBufferCapacity(typeSizes, typeCount);
-			var bufferSize = Archetype.SizeOfBuffer(typeCount);
+			var bufferSize    = Archetype.SizeOfBuffer(typeCount);
 
 			if(chunkCapacity == 0)
 				throw new ArgumentOutOfRangeException("The archetype is too large.");
@@ -271,10 +281,10 @@ namespace Checs
 		{
 			// One less because we dont need to copy the entity information twice.
 			var bufferCount = lhs->componentCount + rhs->componentCount - 1;
-			var combinedHashCodes = stackalloc uint[bufferCount];
-			var combinedSizes = stackalloc int[bufferCount];
 
-			var combinedCount = ArchetypeUtility.Union(lhs, rhs, combinedHashCodes, combinedSizes);
+			var combinedHashCodes = stackalloc uint[bufferCount];
+			var combinedSizes     = stackalloc int[bufferCount];
+			var combinedCount     = ArchetypeUtility.Union(lhs, rhs, combinedHashCodes, combinedSizes);
 		
 			return CreateArchetypeInternal(combinedHashCodes, combinedSizes, combinedCount);
 		}
@@ -296,9 +306,9 @@ namespace Checs
 		/// </remarks>
 		internal EntityArchetype CreateArchetypeInternal(Archetype* archetype, uint* typeHashCodes, int* typeSizes, int typeCount)
 		{
-			var combinedCount = archetype->componentCount + typeCount;
+			var combinedCount     = archetype->componentCount + typeCount;
 			var combinedHashCodes = stackalloc uint[combinedCount];
-			var combinedSizes = stackalloc int[combinedCount];
+			var combinedSizes     = stackalloc int[combinedCount];
 
 			ArchetypeUtility.Copy(archetype, combinedHashCodes, combinedSizes);
 
@@ -306,22 +316,10 @@ namespace Checs
 			Unsafe.CopyBlockUnaligned(combinedHashCodes + archetype->componentCount, typeHashCodes, (uint)size);
 			Unsafe.CopyBlockUnaligned(combinedSizes     + archetype->componentCount, typeSizes, (uint)size);
 
-			var uniqueCount = TypeUtility.Sort(combinedHashCodes, combinedSizes, combinedCount);
+			var uniqueCount = TypeUtility.Sort(combinedHashCodes, combinedSizes, combinedCount); // TODO
 			var startIndex = combinedCount - uniqueCount;
 
 			return CreateArchetypeInternal(combinedHashCodes + startIndex, combinedSizes + startIndex, uniqueCount);
-		}
-
-		internal void CollectTypeInformation(ReadOnlySpan<ComponentType> types, uint* hashCodes, int* sizes)
-		{
-			// Maybe there is a way to calculate the block size here.
-			// But due to the fact that duplicates are allowed, it is hard to substract them away again.
-
-			for(int i = 0; i < types.Length; ++i)
-			{
-				hashCodes[i] = types[i].hashCode;
-				sizes[i] = types[i].size;
-			}
 		}
 	}
 }

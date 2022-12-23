@@ -223,12 +223,12 @@ namespace Checs
 
 			if(query->knownArchetypeCount < this.archetypeStore.count)
 			{
-				var diffArchetypeCount = this.archetypeStore.count - query->knownArchetypeCount;
+				var count      = this.archetypeStore.count - query->knownArchetypeCount;
 				var archetypes = this.archetypeStore.archetypes + query->knownArchetypeCount;
 				
 				query->knownArchetypeCount = this.archetypeStore.count;
 
-				for(int i = 0; i < diffArchetypeCount; ++i)
+				for(int i = 0; i < count; ++i)
 				{
 					if(QueryUtility.Matches(query, archetypes[i]))
 						query->archetypeList.Add(archetypes[i]);
