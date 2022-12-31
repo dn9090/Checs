@@ -8,7 +8,7 @@ namespace Checs
 	{
 		internal static Type type = typeof(Entity);
 
-		internal static uint hashCode = (uint)type.GetHashCode();
+		internal static uint hashCode = xxHash.GetHashCode(type.FullName);
 
 		internal static TypeInfo info = TypeRegistry<Entity>.info;
 

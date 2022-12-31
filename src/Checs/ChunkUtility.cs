@@ -12,7 +12,7 @@ namespace Checs
 			chunk->archetype     = archetype;
 			chunk->capacity      = archetype->chunkCapacity;
 			chunk->count         = 0;
-			chunk->changeVersion = 0;
+			chunk->version       = 0;
 		}
 
 		public static int CalculateBufferCapacity(int* sizes, int count)
@@ -340,24 +340,12 @@ namespace Checs
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static void IncrementChangeVersion(Chunk* chunk, int componentIndex)
+		public static void IncrementVersion(Chunk* chunk, ref uint version)
 		{
-			var version = chunk->archetype->changeVersion->componentVersion++;
-			Archetype.GetComponentVersions(chunk->archetype)[componentIndex] = version;
-			chunk->changeVersion = version;
-		}
+			var value = version++;
 
-		public static void IncrementStructuralVersion(Chunk* chunk)
-		{
-			var version = chunk->archetype->changeVersion->componentVersion++;
-			Archetype.GetComponentVersions(chunk->archetype)[0] = version;
-			chunk->changeVersion = version;
-			++chunk->structuralVersion;
-		}
-
-		public static bool HasChanged(Chunk* chunk, int version)
-		{
-			return (chunk->changeVersion - version) > 0;
+			chunk->version = value;
+			chunk->archetype->chunkVersion = value;
 		}
 	}
 }

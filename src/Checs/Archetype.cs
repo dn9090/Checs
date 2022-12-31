@@ -11,17 +11,17 @@ namespace Checs
 		public int index;
 
 		[FieldOffset(4)]
-		public int chunkCapacity;
-
-		[FieldOffset(8)]
 		public int entityCount;
 
-		[FieldOffset(12)]
+		[FieldOffset(8)]
 		public int componentCount;
 
+		[FieldOffset(12)]
+		public int chunkCapacity;
+
 		[FieldOffset(16)]
-		public ChangeVersion* changeVersion;
-		
+		public uint chunkVersion;
+
 		[FieldOffset(32)]
 		public ChunkList chunkList;
 
@@ -39,14 +39,14 @@ namespace Checs
 			this.chunkList.Dispose();
 		}
 
-		public static void Construct(Archetype* archetype, ChangeVersion* changeVersion,
-			uint* componentHashCodes, int* componentSizes, int componentCount, int chunkCapacity)
+		public static void Construct(Archetype* archetype, uint* componentHashCodes, int* componentSizes,
+			int componentCount, int chunkCapacity)
 		{
 			archetype->entityCount = 0;
-			archetype->chunkCapacity = chunkCapacity;
-			archetype->chunkList = new ChunkList();
-			archetype->changeVersion = changeVersion;
 			archetype->componentCount = componentCount;
+			archetype->chunkCapacity = chunkCapacity;
+			archetype->chunkVersion = 0;
+			archetype->chunkList = new ChunkList();
 
 			var hashCodes = GetComponentHashCodes(archetype);
 			var sizes     = GetComponentSizes(archetype);
@@ -82,13 +82,13 @@ namespace Checs
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int* GetComponentOffsets(Archetype* archetype)
 		{
-			return (int*)archetype->buffer + (archetype->componentCount << 1);
+			return (int*)archetype->buffer + archetype->componentCount * 2;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int* GetComponentVersions(Archetype* archetype)
 		{
-			return (int*)archetype->buffer + (archetype->componentCount << 2);
+			return (int*)archetype->buffer + archetype->componentCount * 3;
 		}
 	}
 }

@@ -19,16 +19,13 @@ namespace Checs
 		[FieldOffset(24)]
 		public int index;
 
-		[FieldOffset(28)]
-		public int changeVersion;
-
 		// ---------------------------------
 		// DO NOT OVERWRITE THE FIELDS BELOW
 		// IN OTHER CHUNK TYPES.
 		// ---------------------------------
 
 		[FieldOffset(40)]
-		public int structuralVersion;
+		public uint version;
 
 		[FieldOffset(44)]
 		public uint sequenceNumber;

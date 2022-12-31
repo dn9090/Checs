@@ -132,7 +132,6 @@ namespace Checs
 
 				if(componentIndex >= 0)
 				{
-					ChunkUtility.IncrementChangeVersion(this.chunk, componentIndex);
 					var ptr = ChunkUtility.GetComponentDataPtr<T>(this.chunk, componentIndex);
 					return new Span<T>(ptr + this.index, this.length);
 				}
@@ -165,48 +164,5 @@ namespace Checs
 			
 			return IntPtr.Zero;
 		}
-		
-		public ComponentBuffer<T> GetComponentBuffer<T>(int index) where T : unmanaged
-		{
-			if((uint)index >= (uint)this.length)
-				throw new ArgumentOutOfRangeException(nameof(index));
-
-			unsafe
-			{
-				var hashCode = TypeRegistry<ComponentBuffer<T>>.info.hashCode;
-				var componentIndex = ArchetypeUtility.GetComponentIndex(this.chunk->archetype, hashCode);
-
-				if(componentIndex >= 0)
-				{
-					var offset = ChunkUtility.GetComponentDataOffset(this.chunk, componentIndex, index);
-					return new ComponentBuffer<T>(this.chunk, offset);
-				}
-			}
-
-			return default;
-		}
-		
-		public bool HasChanged(EntityChangeVersion changeVersion)
-		{
-			unsafe
-			{
-				return ChunkUtility.HasChanged(this.chunk, changeVersion.version);
-			}
-		}
-		
-		public bool HasChanged<T>(EntityChangeVersion changeVersion) where T : unmanaged
-		{
-			unsafe
-			{
-				if(ChunkUtility.HasChanged(this.chunk, changeVersion.version))
-				{
-					var hashCode = TypeRegistry<T>.info.hashCode;
-					return ArchetypeUtility.HasChanged(chunk->archetype, hashCode, changeVersion.version);
-				}
-			}
-
-			return false;
-		}
-
 	}
 }

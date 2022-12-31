@@ -115,7 +115,7 @@ namespace Checs
 							var entityCommand = (EntityCommand*)peekOffset.header;
 							var entityBuffer = new Span<Entity>(entityCommand + 1, entityCommand->count);
 
-							WriteComponentData(entityBuffer, (byte*)(command + 1), command->size, command->hashCode);
+							WriteComponentDataInternal(entityBuffer, (byte*)(command + 1), command->size, command->hashCode);
 						}
 
 						break;

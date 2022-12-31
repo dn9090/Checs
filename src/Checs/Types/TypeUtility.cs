@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
-using System.Reflection.Emit;
 
 namespace Checs
 {
@@ -13,7 +12,16 @@ namespace Checs
 		{
 			// The type of the entity should always have the hash value of 0
 			// to guarantee that the entity type information is always at the first index.
-			return (uint)type.GetHashCode() ^ Entity.hashCode;
+			return xxHash.GetHashCode(type.FullName) ^ Entity.hashCode;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int SizeOf(Type type)
+		{
+			// Workaround because Unsafe.SizeOf does not accept a type object and
+			// Marshal.SizeOf gives back the wrong size (and does not work with generic types).
+			var method = typeof(Unsafe).GetMethod(nameof(Unsafe.SizeOf)).MakeGenericMethod(type);
+			return (int)method.Invoke(null, null);
 		}
 
 		public static int Sort(ReadOnlySpan<ComponentType> types, uint* hashCodes, int* sizes, int startIndex)

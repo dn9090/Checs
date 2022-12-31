@@ -11,13 +11,13 @@ namespace Checs
 		/// all archetypes (including the empty archetype).
 		/// </summary>
 		/// <remarks>
-		/// Is equivalent to <c>EntityQuery.Universial</c> or
-		/// the <c>default</c> archetype.
+		/// Is equivalent to <see cref="EntityQuery.universal"/> or
+		/// the <c>default</c> query.
 		/// </remarks>
 		/// <returns>The universial query.</returns>
 		public EntityQuery CreateQuery()
 		{
-			return EntityQuery.Universal;
+			return EntityQuery.universal;
 		}
 
 		/// <summary>
@@ -77,7 +77,7 @@ namespace Checs
 
 			this.lookupTable.Add(hashCode, query->index);
 			
-			Query.Construct(query, this.entityStore.changeVersion, includeHashCodes, includeCount, excludeHashCodes, excludeCount);
+			Query.Construct(query, includeHashCodes, includeCount, excludeHashCodes, excludeCount);
 			
 			return new EntityQuery(query->index);
 		}

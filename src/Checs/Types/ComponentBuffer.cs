@@ -6,182 +6,104 @@ using System.Runtime.CompilerServices;
 namespace Checs
 {
 	[StructLayout(LayoutKind.Sequential, Size = 16)]
-	public struct ComponentBuffer<T> : IDisposable where T : unmanaged
+	public struct ComponentBuffer2<T> where T : unmanaged
 	{
-		public static int initialCapacity = 16;
-
-		public bool isAccessible
-		{
-			get
-			{
-				unsafe { return chunk != null || version == chunk->structuralVersion; }
-			}
-		}
-
-		public int count
-		{
-			get
-			{
-				unsafe { return isAccessible ? GetBuffer()->count : 0; }
-			}
-		}
-
-		public int capacity
-		{
-			get
-			{
-				unsafe { return isAccessible ? GetBuffer()->capacity : 0; }
-			}
-		}
-
 		internal unsafe Chunk* chunk;
 
-		internal int offset;
+		internal unsafe ComponentBuffer* buffer;
 
-		internal int version;
+		internal uint chunkVersion;
 
-		internal unsafe ComponentBuffer(Chunk* chunk, int offset)
+		internal unsafe ComponentBuffer2(Chunk* chunk, ComponentBuffer* buffer)
 		{
 			this.chunk = chunk;
-			this.offset = offset;
-			this.version = chunk->structuralVersion;
+			this.buffer = buffer;
+			this.chunkVersion = chunk->version;
 		}
 
 		public void Add(T value)
 		{
+			CheckModified();
+
 			unsafe
 			{
-				if(version == chunk->structuralVersion)
-				{
-					var buffer = GetBuffer();
-
-					if(buffer->count == buffer->capacity)
-					{
-						var capacity = buffer->capacity == 0 ? initialCapacity : buffer->capacity * 2;
-						buffer->Resize(capacity, sizeof(T));
-					}
-
-					var elements = (T*)buffer->values;
-					elements[buffer->count++] = value;
-				}
+				buffer->EnsureCapacity(sizeof(T));
+				((T*)buffer->values)[buffer->count++] = value;
 			}
 		}
 
 		public void Add(ReadOnlySpan<T> values)
 		{
+			CheckModified();
+
 			unsafe
 			{
-				if(version == chunk->structuralVersion)
-				{
-					var buffer = GetBuffer();
-					var requiredCapacity = buffer->count + values.Length;
-
-					if(requiredCapacity > buffer->capacity)
-					{
-						var capacity = Allocator.RoundToPowerOfTwo(requiredCapacity);
-						buffer->Resize(capacity, sizeof(T));
-					}
-
-					values.CopyTo(new Span<T>(buffer->values, values.Length).Slice(buffer->count));
-				}
+				buffer->EnsureCapacity(values.Length, sizeof(T));
+				values.CopyTo(new Span<T>(buffer->values, buffer->capacity).Slice(buffer->count));
+				buffer->count += values.Length;
 			}
 		}
 
 		public void Swapback(int index)
 		{
-			unsafe
-			{
-				if(version == chunk->structuralVersion)
-				{
-					var buffer = GetBuffer();
-				
-					if((uint)index >= (uint)buffer->count)
-						throw new ArgumentOutOfRangeException(nameof(index));
-
-					var elements = (T*)buffer->values;
-					elements[index] = elements[--buffer->count];
-				}
-			}
 		}
 
-		public void Clear()
+		public Span<T> AsSpan()
 		{
 			unsafe
 			{
-				if(version == chunk->structuralVersion)
-					GetBuffer()->count = 0;
+				return new Span<T>(this.buffer->values, this.buffer->count);
+			}
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		internal unsafe void CheckModified()
+		{
+			if(this.chunkVersion != chunk->version)
+				throw new InvalidOperationException("Entity possibly moved or destroyed.");
+		}
+	}
+
+
+	internal unsafe struct ComponentBuffer : IDisposable
+	{
+		public static int initialCapacity = 16;
+
+		public int count;
+
+		public int capacity;
+
+		public void* values;
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void EnsureCapacity(int requestedCapacity, int elementSize)
+		{
+			var requiredCapacity = this.count + requestedCapacity;
+
+			if(requiredCapacity > this.capacity)
+			{
+				this.capacity = Allocator.RoundToPowerOfTwo(requiredCapacity);
+				this.values   = Allocator.Realloc(this.values, this.capacity * elementSize);
+			}
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void EnsureCapacity(int elementSize)
+		{
+			if(this.count == this.capacity)
+			{
+				this.capacity = this.capacity == 0 ? initialCapacity : this.capacity * 2;
+				this.values   = Allocator.Realloc(this.values, this.capacity * elementSize);
 			}
 		}
 
 		public void Dispose()
 		{
-			unsafe
-			{
-				if(version == chunk->structuralVersion)
-					GetBuffer()->Dispose();
-			}
-		}
+			Allocator.Free(this.values);
 
-		internal unsafe ResizableBuffer* GetBuffer()
-		{
-			return (ResizableBuffer*)(this.chunk->buffer + this.offset);
+			this.values = null;
+			this.count = 0;
+			this.capacity = 0;
 		}
 	}
-
-	
-
-	/*
-
-
-
-		var test = manager.CreateArchetype(new[] {
-			ComponentType.Of<Position>(),
-			ComponentType.Of<Rotation>(),
-			ComponentType.Of<Collision>(ComponentFlags.Buffer)
-		});
-
-		var test = manager.CreateArchetype(new[] {
-			ComponentType.Of<Position>(),
-			ComponentType.Of<Rotation>(),
-			ComponentType.Of<Collision>(isBuffer: true)
-		});
-
-		var test = manager.CreateArchetype(new[] {
-			ComponentData.Of<Position>(),
-			ComponentData.Of<Rotation>(),
-			ComponentBuffer.Of<Collision>()
-		});
-
-		var test = manager.CreateArchetype(new[] {
-			new Type<Position>(),
-			new Type<Rotation>(),
-			new Type<Collision>(isBuffer: true)
-		});
-
-		var test = manager.CreateArchetype(new[] {
-			Component.Data<Position>(),
-			Component.Data<Rotation>(),
-			Component.Buffer<Collision>()
-		}); 
-	
-		if(archetype->flags != 0)
-		{
-			for(int i = 0; i < archetype->componentCount; ++i)
-			{
-				if(archetype->componentFlags[i] & Flags.Buffer)
-				{
-					foreach(entity) buffer.Dispose();
-				}
-
-				if(archetype->componentFlags[i] & Flags.Dispose)
-				{
-					var dispose = TypeRegistry.GetDisposeFunction()
-
-					foreach(entity) dispose(component);
-				}
-			}
-		}
-
-
-	*/
 }

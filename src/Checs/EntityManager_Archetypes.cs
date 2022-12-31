@@ -10,13 +10,13 @@ namespace Checs
 		/// Creates the empty archetype.
 		/// </summary>
 		/// <remarks>
-		/// Is equivalent to <c>EntityArchetype.Empty</c> or
+		/// Is equivalent to <see cref="EntityArchetype.empty"/> or
 		/// the <c>default</c> archetype.
 		/// </remarks>
 		/// <returns>The empty archetype.</returns>
 		public EntityArchetype CreateArchetype()
 		{
-			return EntityArchetype.Empty;
+			return EntityArchetype.empty;
 		}
 
 		/// <summary>
@@ -28,7 +28,7 @@ namespace Checs
 		public EntityArchetype CreateArchetype(ComponentType type)
 		{
 			if(type.isEntity)
-				return EntityArchetype.Empty;
+				return EntityArchetype.empty;
 
 			var hashCodes = stackalloc uint[2] { 0, type.hashCode };
 			var sizes     = stackalloc int[2] { sizeof(Entity), type.size };
@@ -45,7 +45,7 @@ namespace Checs
 		public EntityArchetype CreateArchetype(ReadOnlySpan<ComponentType> types)
 		{
 			if(types.Length == 0)
-				return EntityArchetype.Empty;
+				return EntityArchetype.empty;
 			
 			var typeCount = types.Length + 1;
 			var hashCodes = stackalloc uint[typeCount];
@@ -265,11 +265,10 @@ namespace Checs
 				throw new ArgumentOutOfRangeException("The archetype is too large.");
 
 			var archetype = this.archetypeStore.Aquire(bufferSize);
-			var changeVersion = this.entityStore.changeVersion;
 
 			this.lookupTable.Add(hashCode, archetype->index);
 			
-			Archetype.Construct(archetype, changeVersion, typeHashCodes, typeSizes, typeCount, chunkCapacity);
+			Archetype.Construct(archetype, typeHashCodes, typeSizes, typeCount, chunkCapacity);
 
 			return new EntityArchetype(archetype->index);
 		}

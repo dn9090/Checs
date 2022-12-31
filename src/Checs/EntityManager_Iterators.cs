@@ -9,7 +9,7 @@ namespace Checs
 		public delegate void Action<T>(EntityTable table, T args);
 
 		/// <summary>
-		/// Performs the specified action on each <see cref="EntityTable"/> of the
+		/// Performs the action on each <see cref="EntityTable"/> of the
 		/// specified archetype.
 		/// </summary>
 		/// <param name="archetype">The archetype.</param>
@@ -29,7 +29,7 @@ namespace Checs
 		}
 
 		/// <summary>
-		/// Performs the specified action on each <see cref="EntityTable"/> of the
+		/// Performs the action on each <see cref="EntityTable"/> of the
 		/// specified query.
 		/// </summary>
 		/// <param name="query">The query.</param>
@@ -46,14 +46,17 @@ namespace Checs
 		{
 			var qry = GetQueryInternal(query);
 			UpdateQueryCache(qry);
+
+			var count = qry->archetypeList.count;
+			var archetypes = qry->archetypeList.archetypes;
 			
-			for(int i = 0; i < qry->archetypeList.count; ++i)
-				ForEachInternal(qry->archetypeList.archetypes[i], action, args);
+			for(int i = 0; i < count; ++i)
+				ForEachInternal(archetypes[i], action, args);
 		}
 
 		internal void ForEachInternal<T>(Archetype* archetype, Action<T> action, T args)
 		{
-			var structuralVersion = this.entityStore.changeVersion->structuralVersion;
+			var chunkVersion = archetype->chunkVersion;
 
 			var count = archetype->chunkList.count;
 			var chunks = archetype->chunkList.chunks;
@@ -61,7 +64,7 @@ namespace Checs
 			for(int i = 0; i < count; ++i)
 				action(new EntityTable(chunks[i]), args);
 
-			this.entityStore.changeVersion->CheckStructuralChange(structuralVersion);
+			CheckModified(archetype, chunkVersion);
 		}
 		
 		public EntityIterator GetIterator(EntityArchetype archetype)
@@ -75,6 +78,13 @@ namespace Checs
 			var qry = GetQueryInternal(query);
 			UpdateQueryCache(qry);
 			return new EntityIterator(qry);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		internal static void CheckModified(Archetype* archetype, uint version)
+		{
+			if(version != archetype->chunkVersion) // TODO
+				throw new InvalidOperationException("Cannot modifiy archetypes that are accessed.");
 		}
 	}
 }

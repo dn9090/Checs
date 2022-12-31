@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace Checs
 {
-	public struct ComponentDataLookup<T> where T : unmanaged
+	public struct ComponentDataLookup<T> where T : unmanaged // Rename to ComponentData<T> ?
 	{
 		public T this[Entity entity]
 		{
@@ -55,7 +55,6 @@ namespace Checs
 					if(componentIndex >= 0)
 					{
 						this.cachedIndex = componentIndex;
-						ChunkUtility.IncrementChangeVersion(entityInChunk.chunk, componentIndex);
 						ChunkUtility.GetComponentDataPtr<T>(entityInChunk.chunk, componentIndex)[entityInChunk.index] = value;
 						return true;
 					}

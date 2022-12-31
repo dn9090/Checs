@@ -13,7 +13,7 @@ namespace Checs
 			this.index = index;
 		}
 
-		public static EntityQuery Universal => new EntityQuery();
+		public static EntityQuery universal => new EntityQuery();
 
 		public static bool operator ==(EntityQuery lhs, EntityQuery rhs) =>
 			lhs.index == rhs.index;

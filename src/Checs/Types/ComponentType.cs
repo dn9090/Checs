@@ -5,42 +5,23 @@ using System.Runtime.CompilerServices;
 
 namespace Checs
 {
-	[Flags]
-	internal enum ComponentFlags : int
-	{
-		None    = 0,
-		Buffer  = 1 << 0
-	}
-
-	public struct ComponentType : IEquatable<ComponentType>
+	public readonly struct ComponentType : IEquatable<ComponentType>
 	{
 		public bool isEntity => hashCode == 0;
 
-		internal uint hashCode;
+		public readonly uint hashCode;
 
-		internal int size;
+		public readonly int size;
 
-		internal ComponentFlags flags;
+		internal ComponentType(uint hashCode, int size)
+		{
+			this.hashCode = hashCode;
+			this.size = size;		}
 
-		internal ComponentType(TypeInfo info, ComponentFlags flags)
+		internal ComponentType(TypeInfo info)
 		{
 			this.hashCode = info.hashCode;
 			this.size = info.size;
-			this.flags = flags;
-		}
-
-		internal ComponentType(uint hashCode, int size, ComponentFlags flags = ComponentFlags.None)
-		{
-			this.hashCode = hashCode;
-			this.size = size;
-			this.flags = flags;
-		}
-
-		public ComponentType AsBuffer()
-		{
-			var componentType = this;
-			componentType.flags |= ComponentFlags.Buffer;
-			return componentType;
 		}
 
 		public static bool operator ==(ComponentType lhs, ComponentType rhs)
@@ -48,7 +29,7 @@ namespace Checs
 			return lhs.hashCode == rhs.hashCode;
 		}
 		
-		public static bool operator !=(ComponentType lhs, ComponentType rhs) 
+		public static bool operator !=(ComponentType lhs, ComponentType rhs)
 		{
 			return lhs.hashCode != rhs.hashCode;
 		}
@@ -68,17 +49,22 @@ namespace Checs
 			return (int)this.hashCode;
 		}
 
-		public override string ToString()
-		{
-			var info = TypeRegistry.GetTypeInfo(this.hashCode);
-			return $"ComponentType({info.type.FullName}:{info.hashCode})";
-		}
-
-		public static ComponentType Of<T>()
+		public static ComponentType Of<T>() where T : unmanaged
 		{
 			var info = TypeRegistry<T>.info;
-			var flags = ComponentFlags.None;
-			return new ComponentType(info, flags);
+			return new ComponentType(info);
 		}
+	
+		public static ComponentType Of(Type type)
+		{
+			var info = TypeRegistry.GetTypeInfo(type);
+			return new ComponentType(info);
+		}
+
+		/*public static ComponentType AsBuffer<T>() where T : unmanaged
+		{
+			var info = TypeRegistry<ComponentBuffer<T>>.info;
+			return new ComponentType(info);
+		}*/
 	}
 }

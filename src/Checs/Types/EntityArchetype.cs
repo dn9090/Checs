@@ -13,7 +13,7 @@ namespace Checs
 			this.index = index;
 		}
 
-		public static EntityArchetype Empty => new EntityArchetype();
+		public static EntityArchetype empty => new EntityArchetype();
 
 		public static bool operator ==(EntityArchetype lhs, EntityArchetype rhs) =>
 			lhs.index == rhs.index;
@@ -31,7 +31,7 @@ namespace Checs
 
 		public override string ToString()
 		{
-			return Equals(Empty) ? "EntityArchetype.Empty" : $"EntityArchetype({this.index})";
+			return Equals(empty) ? "EntityArchetype.empty" : $"EntityArchetype({this.index})";
 		}
 	}
 }

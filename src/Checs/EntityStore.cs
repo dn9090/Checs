@@ -18,9 +18,11 @@ namespace Checs
 
 		public int nextFreeIndex;
 
-		public EntityInChunk* entitiesInChunk;
+		public uint version;
 
-		public ChangeVersion* changeVersion;
+		public uint chunkVersion;
+
+		public EntityInChunk* entitiesInChunk;
 
 		public EntityStore(int initialCapacity)
 		{
@@ -29,8 +31,8 @@ namespace Checs
 			this.reserved = 0;
 			this.nextFreeIndex = -1;
 			this.entitiesInChunk = (EntityInChunk*)Allocator.Calloc(sizeof(EntityInChunk) * this.capacity);
-			this.changeVersion = (ChangeVersion*)Allocator.Alloc(sizeof(ChangeVersion));
-			this.changeVersion->Reset();
+			this.version = 1;
+			this.chunkVersion = 1;
 		}
 
 		public void EnsureCapacity(int requestedCapacity)
@@ -49,10 +51,9 @@ namespace Checs
 
 		public void Register(Chunk* chunk, int startIndex, int count)
 		{
-			ChunkUtility.IncrementStructuralVersion(chunk);
+			ChunkUtility.IncrementVersion(chunk, ref this.chunkVersion);
 
 			var entities = ChunkUtility.GetEntities(chunk, 0);
-			var version = this.changeVersion->entityVersion;
 			var registeredCount = 0;
 	
 			while(this.nextFreeIndex >= 0 && registeredCount < count)
@@ -62,8 +63,8 @@ namespace Checs
 
 				var indexInChunk = startIndex + registeredCount++; 
 
-				this.entitiesInChunk[index] = new EntityInChunk(chunk, indexInChunk, version);
-				entities[indexInChunk] = new Entity(index, version);
+				this.entitiesInChunk[index] = new EntityInChunk(chunk, indexInChunk, this.version);
+				entities[indexInChunk] = new Entity(index, this.version);
 			}
 
 			while(registeredCount < count)
@@ -71,8 +72,8 @@ namespace Checs
 				var index = this.reserved++;
 				var indexInChunk = startIndex + registeredCount++;
 
-				this.entitiesInChunk[index] = new EntityInChunk(chunk, indexInChunk, version);
-				entities[indexInChunk] = new Entity(index, version);
+				this.entitiesInChunk[index] = new EntityInChunk(chunk, indexInChunk, this.version);
+				entities[indexInChunk] = new Entity(index, this.version);
 			}
 
 			this.count += count;
@@ -80,8 +81,10 @@ namespace Checs
 
 		public void Unregister(Chunk* chunk, int startIndex, int count)
 		{
-			ChunkUtility.IncrementStructuralVersion(chunk);
-			++this.changeVersion->entityVersion;
+			// A unregister call needs to be followed by a update call
+			// to ensure that the version of the chunk is incremented.
+
+			++this.version;
 
 			var entities = ChunkUtility.GetEntities(chunk, startIndex);
 			var freeIndex = this.nextFreeIndex;
@@ -99,8 +102,8 @@ namespace Checs
 
 		public void Update(Chunk* chunk, int startIndex, int count)
 		{
-			ChunkUtility.IncrementStructuralVersion(chunk);
-			
+			ChunkUtility.IncrementVersion(chunk, ref this.chunkVersion);
+
 			var entities = ChunkUtility.GetEntities(chunk, startIndex);
 			
 			for(int i = 0; i < count; ++i)
@@ -116,7 +119,6 @@ namespace Checs
 			this.reserved = 0;
 			this.capacity = 0;
 			Allocator.Free(this.entitiesInChunk);
-			Allocator.Free(this.changeVersion);
 		}
 	}
 }

@@ -12,7 +12,7 @@ namespace Checs
 		/// <returns>The created entity.</returns>
 		public Entity CreateEntity() 
 		{
-			return CreateEntity(EntityArchetype.Empty);
+			return CreateEntity(EntityArchetype.empty);
 		}
 
 		/// <summary>
@@ -36,7 +36,7 @@ namespace Checs
 		/// <param name="entities">The destination buffer.</param>
 		public void CreateEntity(Span<Entity> entities)
 		{
-			CreateEntity(EntityArchetype.Empty, entities);
+			CreateEntity(EntityArchetype.empty, entities);
 		}
 
 		/// <summary>
@@ -217,8 +217,6 @@ namespace Checs
 		{
 			var entityInChunk = this.entityStore.entitiesInChunk[entity.index];
 			return entityInChunk.version == entity.version && entityInChunk.chunk != null;
-			// Replace with return entity.index < this.entityStore.count && entityInChunk.version == entity.version?
-			// No, because if the first entity is deleted the version of the entity is 0 again which makes Exists(default) true.
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -313,9 +311,7 @@ namespace Checs
 		/// <returns>The archetype of the entity.</returns>
 		public EntityArchetype GetArchetype(Entity entity)
 		{
-			var entityInChunk = this.entityStore.entitiesInChunk[entity.index];
-			
-			if(entityInChunk.chunk != null && entityInChunk.version == entity.version)
+			if(TryGetEntityInChunk(entity, out var entityInChunk))
 				return new EntityArchetype(entityInChunk.chunk->archetype->index);
 			
 			return default;
@@ -389,16 +385,12 @@ namespace Checs
 
 		internal void AllocateEntityBatch(EntityBatch batch)
 		{
-			this.entityStore.changeVersion->MarkStructuralChange();
-
 			ChunkUtility.ReserveEntities(batch.chunk, batch.count);
 			this.entityStore.Register(batch.chunk, batch.index, batch.count);
 		}
 
 		internal void MoveEntityBatch(EntityBatch batch, Archetype* archetype)
 		{
-			this.entityStore.changeVersion->MarkStructuralChange();
-
 			var chunkIndexInArray = 0;
 			var count = 0;
 			
@@ -421,9 +413,8 @@ namespace Checs
 
 		internal void DestroyEntityBatch(EntityBatch batch)
 		{
-			this.entityStore.changeVersion->MarkStructuralChange();
-
 			this.entityStore.Unregister(batch.chunk, batch.index, batch.count);
+			
 			var patchCount = ChunkUtility.PatchEntities(batch.chunk, batch.index, batch.count);
 			this.entityStore.Update(batch.chunk, batch.index, patchCount);
 

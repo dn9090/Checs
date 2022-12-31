@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 namespace Checs
 {
 	[StructLayout(LayoutKind.Sequential)]
-	internal struct TypeInfo
+	internal struct TypeInfo // TODO: Can be read-only.
 	{
 		public uint hashCode;
 
@@ -31,6 +31,25 @@ namespace Checs
 			{
 				hashCode = hashCode,
 				size = Unsafe.SizeOf<T>(),
+				type = type
+			};
+
+			infos.Add(hashCode, info);
+
+			return info;
+		}
+
+		public static TypeInfo GetTypeInfo(Type type) // TODO: Lock
+		{
+			var hashCode = TypeUtility.GetHashCode(type);
+
+			if(infos.TryGetValue(hashCode, out TypeInfo info))
+				return info;
+			
+			info = new TypeInfo
+			{
+				hashCode = hashCode,
+				size = TypeUtility.SizeOf(type),
 				type = type
 			};
 

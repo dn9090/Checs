@@ -14,10 +14,6 @@ namespace Checs
 			Remove = 2
 		}
 
-		public const int Capacity = 4;
-
-		public const int Mask = Capacity - 1;
-
 		[FieldOffset(0)]
 		public Archetype* archetypes;
 
@@ -32,6 +28,10 @@ namespace Checs
 
 		[FieldOffset(56)]
 		public int hand;
+
+		public const int Capacity = 4;
+
+		public const int Mask = Capacity - 1;
 
 		public static Archetype* Get(ArchetypeCache* cache, uint hashCode, Op op)
 		{

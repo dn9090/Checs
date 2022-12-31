@@ -7,6 +7,7 @@ namespace Checs.Tests
 {
 	public partial class EntityManagerTests_ChangeVersion
 	{
+		/*
 		[Fact]
 		public void CreateEntityIncrementsChangeVersion()
 		{
@@ -184,6 +185,6 @@ namespace Checs.Tests
 				Assert.True(manager.HasChanged<Scale>(entities[0], changeVersion));
 				Assert.False(manager.HasChanged<Scale>(entities[entities.Length - 1], changeVersion));
 			}
-		}
+		}*/
 	}
 }

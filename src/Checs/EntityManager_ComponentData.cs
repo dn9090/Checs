@@ -83,8 +83,8 @@ namespace Checs
 
 				if(componentIndex >= 0)
 				{
-					ChunkUtility.IncrementChangeVersion(entityInChunk.chunk, componentIndex);
 					ChunkUtility.GetComponentDataPtr<T>(entityInChunk.chunk, componentIndex)[entityInChunk.index] = value;
+					Interlocked.Increment(ref Unsafe.AsRef<int>(this.testCounter));
 					return true;
 				}
 			}
@@ -139,7 +139,6 @@ namespace Checs
 
 				if(componentIndex >= 0)
 				{
-					ChunkUtility.IncrementChangeVersion(entityBatch.chunk, componentIndex);
 					ChunkUtility.RepeatComponentData<T>(entityBatch.chunk, entityBatch.index, entityBatch.count, componentIndex, in value);
 					touched += entityBatch.count;
 				}
@@ -149,7 +148,7 @@ namespace Checs
 		}
 		
 		/// <summary>
-		/// Adds a specific component type to the entity and
+		/// Adds a specific component type to the entity and (or)
 		/// sets the value of the component.
 		/// </summary>
 		/// <param name="entity">The entity.</param>
@@ -170,8 +169,6 @@ namespace Checs
 
 					entityInChunk = this.entityStore.entitiesInChunk[entity.index];
 					componentIndex = ArchetypeUtility.GetComponentIndex(entityInChunk.chunk->archetype, typeInfo.hashCode);	
-				} else {
-					ChunkUtility.IncrementChangeVersion(entityInChunk.chunk, componentIndex);
 				}
 
 				ChunkUtility.GetComponentDataPtr<T>(entityInChunk.chunk, componentIndex)[entityInChunk.index] = value;
@@ -236,6 +233,38 @@ namespace Checs
 			return false;
 		}
 
+		public void WriteComponentData(ReadOnlySpan<Entity> entities, ReadOnlySpan<byte> value, ComponentType type)
+		{
+			if(value.Length != type.size)
+				throw new ArgumentOutOfRangeException(nameof(value));
+
+			fixed(byte* ptr = value)
+				WriteComponentDataInternal(entities, ptr, type.size, type.hashCode);
+		}
+
+		internal void WriteComponentDataInternal(ReadOnlySpan<Entity> entities, byte* value, int size, uint hashCode)
+		{
+			var count = 0;
+
+			while(count < entities.Length)
+			{
+				var entityBatch = GetFirstEntityBatch(entities.Slice(count));
+
+				count += entityBatch.count;
+
+				if(entityBatch.chunk == null)
+					continue;
+
+				var componentIndex = ArchetypeUtility.GetComponentIndex(entityBatch.chunk->archetype, hashCode);
+
+				if(componentIndex >= 0)
+				{
+					ChunkUtility.RepeatComponentData(entityBatch.chunk, entityBatch.index, entityBatch.count,
+						componentIndex, value, size);
+				}
+			}
+		}
+
 		public int CopyComponentData<T>(EntityArchetype archetype, Span<T> buffer) where T : unmanaged
 		{
 			var arch = GetArchetypeInternal(archetype);
@@ -277,30 +306,6 @@ namespace Checs
 			}
 
 			return count;
-		}
-
-		internal void WriteComponentData(ReadOnlySpan<Entity> entities, byte* value, int size, uint hashCode)
-		{
-			var count = 0;
-
-			while(count < entities.Length)
-			{
-				var entityBatch = GetFirstEntityBatch(entities.Slice(count));
-
-				count += entityBatch.count;
-
-				if(entityBatch.chunk == null)
-					continue;
-
-				var componentIndex = ArchetypeUtility.GetComponentIndex(entityBatch.chunk->archetype, hashCode);
-
-				if(componentIndex >= 0)
-				{
-					ChunkUtility.IncrementChangeVersion(entityBatch.chunk, componentIndex);
-					ChunkUtility.RepeatComponentData(entityBatch.chunk, entityBatch.index, entityBatch.count,
-						componentIndex, value, size);
-				}
-			}
 		}
 	}
 }

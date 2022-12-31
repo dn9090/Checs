@@ -8,7 +8,7 @@ namespace Checs.Tests
 	public partial class EntityCommandBufferTests
 	{
 		[Fact]
-		public void NoAccessAfterDispose()
+		public void ThrowsOnAccessAfterDispose()
 		{
 			using var manager = new EntityManager();
 

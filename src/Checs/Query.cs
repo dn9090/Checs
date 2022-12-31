@@ -22,9 +22,6 @@ namespace Checs
 		[FieldOffset(28)]
 		public int index;
 
-		[FieldOffset(56)]
-		public ChangeVersion* changeVersion;
-
 		[FieldOffset(64)]
 		public fixed byte buffer[4];
 
@@ -37,14 +34,13 @@ namespace Checs
 			this.archetypeList.Dispose();
 		}
 
-		public static void Construct(Query* query, ChangeVersion* changeVersion,
+		public static void Construct(Query* query,
 			uint* includeHashCodes, int includeCount, uint* excludeHashCodes, int excludeCount)
 		{
 			query->includeCount = includeCount;
 			query->excludeCount = excludeCount;
 			query->archetypeList = new ArchetypeList();
 			query->knownArchetypeCount = 0;
-			query->changeVersion = changeVersion;
 			
 			Unsafe.CopyBlockUnaligned(GetIncludeHashCodes(query), includeHashCodes, (uint)(sizeof(uint) * includeCount));
 			Unsafe.CopyBlockUnaligned(GetExcludeHashCodes(query), excludeHashCodes, (uint)(sizeof(uint) * excludeCount));
