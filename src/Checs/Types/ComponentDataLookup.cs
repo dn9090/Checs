@@ -56,6 +56,7 @@ namespace Checs
 					{
 						this.cachedIndex = componentIndex;
 						ChunkUtility.GetComponentDataPtr<T>(entityInChunk.chunk, componentIndex)[entityInChunk.index] = value;
+						ChunkUtility.MarkAsChanged(entityInChunk.chunk, componentIndex);
 						return true;
 					}
 				}

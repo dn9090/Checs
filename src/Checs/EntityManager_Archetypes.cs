@@ -94,17 +94,26 @@ namespace Checs
 			return CreateArchetypeInternal(hashCodes, sizes, count);
 		}
 
-		public EntityArchetype CreateArchetypeWithout(EntityArchetype archetype, ReadOnlySpan<ComponentType> types)
+		internal EntityArchetype CreateArchetypeInternal(uint* hashCodes, int* sizes, int count)
 		{
-			if(types.Length == 0)
-				return archetype;
+			var hashCode = ArchetypeUtility.GetHashCode(hashCodes, count);
 
-			var hashCodes = stackalloc uint[types.Length];
+			if(this.lookupTable.TryGet(hashCode, out var index))
+				return new EntityArchetype(index);
 
-			var count = TypeUtility.Sort(types, hashCodes);
-			var arch = GetArchetypeInternal(archetype);
+			var chunkCapacity = ChunkUtility.CalculateBufferCapacity(sizes, count);
+			var bufferSize    = Archetype.SizeOfBuffer(count);
 
-			return CreateArchetypeWithoutInternal(arch, hashCodes, count);
+			if(chunkCapacity == 0)
+				throw new ArgumentOutOfRangeException("The archetype is too large.");
+
+			var archetype = this.archetypeStore.Aquire(bufferSize);
+
+			this.lookupTable.Add(hashCode, archetype->index);
+			
+			Archetype.Construct(archetype, hashCodes, sizes, count, chunkCapacity, this.changeVersion);
+
+			return new EntityArchetype(archetype->index);
 		}
 
 		/// <summary>
@@ -128,7 +137,19 @@ namespace Checs
 			var archLhs = GetArchetypeInternal(lhs);
 			var archRhs = GetArchetypeInternal(rhs);
 
-			return CreateArchetypeInternal(archLhs, archRhs);
+			return CombineArchetypesInternal(archLhs, archRhs);
+		}
+
+		internal EntityArchetype CombineArchetypesInternal(Archetype* lhs, Archetype* rhs)
+		{
+			// One less because we dont need to copy the entity information twice.
+			var bufferCount = lhs->componentCount + rhs->componentCount - 1;
+
+			var combinedHashCodes = stackalloc uint[bufferCount];
+			var combinedSizes     = stackalloc int[bufferCount];
+			var combinedCount     = ArchetypeUtility.Union(lhs, rhs, combinedHashCodes, combinedSizes);
+		
+			return CreateArchetypeInternal(combinedHashCodes, combinedSizes, combinedCount);
 		}
 
 		/// <summary>
@@ -244,81 +265,26 @@ namespace Checs
 			CreateArchetypeInternal(&hashCode, &size, 1);
 		}
 
-		/// <summary>
-		/// Creates an archetype based on the provided type information.
-		/// </summary>
-		/// <remarks>
-		/// Note that the entity information must be in the first index
-		/// and the type information must be sorted based on the hash code.
-		/// </remarks>
-		internal EntityArchetype CreateArchetypeInternal(uint* typeHashCodes, int* typeSizes, int typeCount)
+		internal EntityArchetype ExtendArchetype(Archetype* archetype, uint hashCode, int size)
 		{
-			var hashCode = xxHash.GetHashCode(typeHashCodes, typeCount) & 0x7FFFFFFF;
-
-			if(this.lookupTable.TryGet(hashCode, out var index))
-				return new EntityArchetype(index);
-
-			var chunkCapacity = ChunkUtility.CalculateBufferCapacity(typeSizes, typeCount);
-			var bufferSize    = Archetype.SizeOfBuffer(typeCount);
-
-			if(chunkCapacity == 0)
-				throw new ArgumentOutOfRangeException("The archetype is too large.");
-
-			var archetype = this.archetypeStore.Aquire(bufferSize);
-
-			this.lookupTable.Add(hashCode, archetype->index);
+			var combinedCount     = archetype->componentCount + 1;
+			var combinedHashCodes = stackalloc uint[combinedCount];
+			var combinedSizes     = stackalloc int[combinedCount];
 			
-			Archetype.Construct(archetype, typeHashCodes, typeSizes, typeCount, chunkCapacity);
+			ArchetypeUtility.CopyInsert(archetype, combinedHashCodes, combinedSizes, hashCode, size);
 
-			return new EntityArchetype(archetype->index);
-		}
-
-		/// <summary>
-		/// Creates an archetype with all components of both archetypes. 
-		/// </summary>
-		internal EntityArchetype CreateArchetypeInternal(Archetype* lhs, Archetype* rhs)
-		{
-			// One less because we dont need to copy the entity information twice.
-			var bufferCount = lhs->componentCount + rhs->componentCount - 1;
-
-			var combinedHashCodes = stackalloc uint[bufferCount];
-			var combinedSizes     = stackalloc int[bufferCount];
-			var combinedCount     = ArchetypeUtility.Union(lhs, rhs, combinedHashCodes, combinedSizes);
-		
 			return CreateArchetypeInternal(combinedHashCodes, combinedSizes, combinedCount);
 		}
 
-		internal EntityArchetype CreateArchetypeWithoutInternal(Archetype* archetype, uint* typeHashCodes, int typeCount)
+		internal EntityArchetype ExcludeFromArchetype(Archetype* archetype, int componentIndex)
 		{
+			var excludedCount     = archetype->componentCount - 1;
 			var excludedHashCodes = stackalloc uint[archetype->componentCount];
 			var excludedSizes     = stackalloc int[archetype->componentCount];
-			var excludedCount     = ArchetypeUtility.Difference(archetype, typeHashCodes, typeCount, excludedHashCodes, excludedSizes);
+
+			ArchetypeUtility.CopyRemoveAt(archetype, excludedHashCodes, excludedSizes, componentIndex);
 
 			return CreateArchetypeInternal(excludedHashCodes, excludedSizes, excludedCount);
-		}
-
-		/// <summary>
-		/// Extends a given archetype with the provided type information.
-		/// </summary>
-		/// <remarks>
-		/// The type information does not have to be sorted.
-		/// </remarks>
-		internal EntityArchetype CreateArchetypeInternal(Archetype* archetype, uint* typeHashCodes, int* typeSizes, int typeCount)
-		{
-			var combinedCount     = archetype->componentCount + typeCount;
-			var combinedHashCodes = stackalloc uint[combinedCount];
-			var combinedSizes     = stackalloc int[combinedCount];
-
-			ArchetypeUtility.Copy(archetype, combinedHashCodes, combinedSizes);
-
-			var size = sizeof(int) * typeCount;
-			Unsafe.CopyBlockUnaligned(combinedHashCodes + archetype->componentCount, typeHashCodes, (uint)size);
-			Unsafe.CopyBlockUnaligned(combinedSizes     + archetype->componentCount, typeSizes, (uint)size);
-
-			var uniqueCount = TypeUtility.Sort(combinedHashCodes, combinedSizes, combinedCount); // TODO
-			var startIndex = combinedCount - uniqueCount;
-
-			return CreateArchetypeInternal(combinedHashCodes + startIndex, combinedSizes + startIndex, uniqueCount);
 		}
 	}
 }

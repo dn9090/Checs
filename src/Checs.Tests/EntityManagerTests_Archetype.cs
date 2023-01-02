@@ -292,56 +292,6 @@ namespace Checs.Tests
 		}
 
 		[Fact]
-		public void Shrinkable()
-		{
-			using EntityManager manager = new EntityManager();
-
-			{
-				var original = manager.CreateArchetype(ComponentType.Of<Position>());
-				var excluded = manager.CreateArchetypeWithout(original, new[] {
-					ComponentType.Of<Position>()
-				});
-				var actual = manager.CreateArchetype();
-
-				Assert.NotEqual(original, excluded);
-				Assert.Equal(actual, excluded);
-			}
-
-			{
-				var original = manager.CreateArchetype(new[] {
-					ComponentType.Of<Position>(),
-					ComponentType.Of<Rotation>()
-				});
-				var excluded = manager.CreateArchetypeWithout(original, new[] {
-					ComponentType.Of<Rotation>()
-				});
-				var actual = manager.CreateArchetype(ComponentType.Of<Position>());
-
-				Assert.NotEqual(original, excluded);
-				Assert.Equal(actual, excluded);
-			}
-
-			{
-				var original = manager.CreateArchetype(new[] {
-					ComponentType.Of<Position>(),
-					ComponentType.Of<Rotation>(),
-					ComponentType.Of<Scale>()
-				});
-				var excluded = manager.CreateArchetypeWithout(original, new[]{
-					ComponentType.Of<Rotation>(),
-					ComponentType.Of<Velocity>()
-				});
-				var actual = manager.CreateArchetype(new[] {
-					ComponentType.Of<Position>(),
-					ComponentType.Of<Scale>()
-				});
-
-				Assert.NotEqual(original, excluded);
-				Assert.Equal(actual, excluded);
-			}
-		}
-
-		[Fact]
 		public void Combinable()
 		{
 			using EntityManager manager = new EntityManager();

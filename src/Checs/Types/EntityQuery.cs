@@ -2,6 +2,9 @@ using System;
 
 namespace Checs
 {
+	/// <summary>
+	/// Identifies a selection of archetypes.
+	/// </summary>
 	public readonly struct EntityQuery : IEquatable<EntityQuery>, IComparable<EntityQuery>
 	{
 		public bool isUniversal => this.index == 0;

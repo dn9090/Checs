@@ -66,7 +66,7 @@ manager.ForEach(query, (table, manager) => {
 });
 
 // Use the universal query to iterate over all entities.
-manager.ForEach(EntityQuery.Universal, (table, manager) => {
+manager.ForEach(EntityQuery.universal, (table, manager) => {
 	var entities   = table.GetEntities();
 	var positions  = table.GetComponentDataReadOnly<Position>();
 	var rotations  = table.GetComponentDataReadOnly<Rotation>();

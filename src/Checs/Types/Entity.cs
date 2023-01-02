@@ -3,6 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace Checs
 {
+	/// <summary>
+	/// Identifies a set of component data.
+	/// </summary>
 	[StructLayout(LayoutKind.Sequential)]
 	public unsafe readonly struct Entity : IEquatable<Entity>, IComparable<Entity>
 	{
@@ -15,7 +18,7 @@ namespace Checs
 		public readonly int index;
 
 		public readonly uint version;
-
+		
 		public bool isNull => version == 0;
 
 		internal Entity(int index, uint version)

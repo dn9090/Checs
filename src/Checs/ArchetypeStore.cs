@@ -20,7 +20,7 @@ namespace Checs
 			this.archetypes = (Archetype**)Allocator.Alloc(sizeof(Archetype*) * this.capacity);
 		}
 
-		public Archetype* Aquire(int size)
+		public Archetype* Aquire(int bufferSize)
 		{
 			if(this.count == this.capacity)
 			{
@@ -30,7 +30,7 @@ namespace Checs
 
 			var index = this.count++;
 
-			this.archetypes[index] = (Archetype*)Allocator.AlignedAlloc(Archetype.Size + size, Archetype.Alignment);
+			this.archetypes[index] = (Archetype*)Allocator.AlignedAlloc(Archetype.Size + bufferSize, Archetype.Alignment);
 			this.archetypes[index]->index = index;
 
 			return this.archetypes[index];

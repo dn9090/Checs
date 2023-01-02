@@ -4,6 +4,9 @@ using System.Runtime.InteropServices;
 
 namespace Checs
 {
+	/// <summary>
+	/// Iterator for tables of an archetype or query.
+	/// </summary>
 	[StructLayout(LayoutKind.Sequential)]
 	public struct EntityIterator : IDisposable
 	{
@@ -39,6 +42,11 @@ namespace Checs
 			this.chunkVersion   = archetype->chunkVersion;
 		}
 
+		/// <summary>
+		/// Tries to get the next table.
+		/// </summary>
+		/// <param name="table">The table.</param>
+		/// <returns>True, if a table was found.</returns>
 		public bool TryNext(out EntityTable table)
 		{
 			unsafe

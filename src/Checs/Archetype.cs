@@ -22,6 +22,9 @@ namespace Checs
 		[FieldOffset(16)]
 		public uint chunkVersion;
 
+		[FieldOffset(24)]
+		public ChangeVersion changeVersion;
+
 		[FieldOffset(32)]
 		public ChunkList chunkList;
 
@@ -40,13 +43,14 @@ namespace Checs
 		}
 
 		public static void Construct(Archetype* archetype, uint* componentHashCodes, int* componentSizes,
-			int componentCount, int chunkCapacity)
+			int componentCount, int chunkCapacity, ChangeVersion changeVersion)
 		{
 			archetype->entityCount = 0;
 			archetype->componentCount = componentCount;
 			archetype->chunkCapacity = chunkCapacity;
 			archetype->chunkVersion = 0;
 			archetype->chunkList = new ChunkList();
+			archetype->changeVersion = changeVersion;
 
 			var hashCodes = GetComponentHashCodes(archetype);
 			var sizes     = GetComponentSizes(archetype);
@@ -86,9 +90,9 @@ namespace Checs
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static int* GetComponentVersions(Archetype* archetype)
+		public static uint* GetComponentVersions(Archetype* archetype)
 		{
-			return (int*)archetype->buffer + archetype->componentCount * 3;
+			return (uint*)archetype->buffer + archetype->componentCount * 3;
 		}
 	}
 }

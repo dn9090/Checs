@@ -2,6 +2,9 @@ using System;
 
 namespace Checs
 {
+	/// <summary>
+	/// Identifier for one unique set of component types.
+	/// </summary>
 	public readonly struct EntityArchetype : IEquatable<EntityArchetype>, IComparable<EntityArchetype>
 	{
 		public bool isEmpty => this.index == 0;

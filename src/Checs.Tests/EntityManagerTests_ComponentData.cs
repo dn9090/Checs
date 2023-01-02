@@ -7,7 +7,7 @@ namespace Checs.Tests
 	public partial class EntityManagerTests_ComponentData
 	{
 		[Fact]
-		public void ComponentTypesMatchArchetype()
+		public void MatchArchetype()
 		{
 			using EntityManager manager = new EntityManager();
 
@@ -80,10 +80,16 @@ namespace Checs.Tests
 			using EntityManager manager = new EntityManager();
 
 			{
+				var entity = manager.CreateEntity();
+
+				Assert.False(manager.AddComponentData<Entity>(entity));
+			}
+
+			{
 				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
 				var entity = manager.CreateEntity(archetype);
 
-				Assert.True(manager.AddComponentData<Rotation>(entity, default));
+				Assert.True(manager.AddComponentData<Rotation>(entity));
 				Assert.True(manager.HasComponentData<Rotation>(entity));
 			}
 
@@ -91,8 +97,27 @@ namespace Checs.Tests
 				var archetype = manager.CreateArchetype();
 				var entity = manager.CreateEntity(archetype);
 
-				Assert.True(manager.AddComponentData<Position>(entity, default));
-				Assert.False(manager.AddComponentData<Position>(entity, default));
+				Assert.True(manager.AddComponentData<Position>(entity));
+				Assert.False(manager.AddComponentData<Position>(entity));
+			}
+
+			{
+				var entity = manager.CreateEntity();
+
+				Assert.True(manager.AddComponentData<Position>(entity));
+				Assert.True(manager.AddComponentData<Rotation>(entity));
+				Assert.True(manager.AddComponentData<Velocity>(entity));
+				Assert.True(manager.AddComponentData<Scale>(entity));
+
+				Assert.False(manager.AddComponentData<Position>(entity));
+				Assert.False(manager.AddComponentData<Rotation>(entity));
+				Assert.False(manager.AddComponentData<Velocity>(entity));
+				Assert.False(manager.AddComponentData<Scale>(entity));
+
+				Assert.True(manager.HasComponentData<Position>(entity));
+				Assert.True(manager.HasComponentData<Rotation>(entity));
+				Assert.True(manager.HasComponentData<Velocity>(entity));
+				Assert.True(manager.HasComponentData<Scale>(entity));
 			}
 		}
 
@@ -102,11 +127,17 @@ namespace Checs.Tests
 			using EntityManager manager = new EntityManager();
 
 			{
+				var entity = manager.CreateEntity();
+
+				Assert.False(manager.RemoveComponentData<Entity>(entity));
+			}
+
+			{
 				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
 				var entity = manager.CreateEntity(archetype);
 
 				Assert.True(manager.RemoveComponentData<Position>(entity));
-				Assert.Equal(manager.CreateArchetype(), manager.GetArchetype(entity));
+				Assert.False(manager.HasComponentData<Position>(entity));
 			}
 
 			{
@@ -117,8 +148,32 @@ namespace Checs.Tests
 				var entity = manager.CreateEntity(archetype);
 
 				Assert.True(manager.RemoveComponentData<Position>(entity));
-				Assert.True(manager.HasComponentData<Rotation>(entity));
 				Assert.False(manager.RemoveComponentData<Position>(entity));
+			}
+
+			{
+				var archetype = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>(),
+					ComponentType.Of<Velocity>(),
+					ComponentType.Of<Scale>()
+				});
+				var entity = manager.CreateEntity(archetype);
+
+				Assert.True(manager.RemoveComponentData<Position>(entity));
+				Assert.True(manager.RemoveComponentData<Rotation>(entity));
+				Assert.True(manager.RemoveComponentData<Velocity>(entity));
+				Assert.True(manager.RemoveComponentData<Scale>(entity));
+
+				Assert.False(manager.RemoveComponentData<Position>(entity));
+				Assert.False(manager.RemoveComponentData<Rotation>(entity));
+				Assert.False(manager.RemoveComponentData<Velocity>(entity));
+				Assert.False(manager.RemoveComponentData<Scale>(entity));
+
+				Assert.False(manager.HasComponentData<Position>(entity));
+				Assert.False(manager.HasComponentData<Rotation>(entity));
+				Assert.False(manager.HasComponentData<Velocity>(entity));
+				Assert.False(manager.HasComponentData<Scale>(entity));
 			}
 		}
 

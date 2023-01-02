@@ -19,6 +19,9 @@ namespace Checs
 		[FieldOffset(24)]
 		public int index;
 
+		[FieldOffset(28)]
+		public uint changeVersion;
+
 		// ---------------------------------
 		// DO NOT OVERWRITE THE FIELDS BELOW
 		// IN OTHER CHUNK TYPES.

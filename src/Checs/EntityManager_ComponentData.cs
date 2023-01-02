@@ -70,6 +70,9 @@ namespace Checs
 		/// <summary>
 		/// Set the value of a specific component type for an entity.
 		/// </summary>
+		/// <remarks>
+		/// Increments the change version.
+		/// </remarks>
 		/// <param name="entity">The entity.</param>
 		/// <param name="value">The value of the component type.</param>
 		/// <typeparam name="T">The component type of the value.</typeparam>
@@ -84,24 +87,7 @@ namespace Checs
 				if(componentIndex >= 0)
 				{
 					ChunkUtility.GetComponentDataPtr<T>(entityInChunk.chunk, componentIndex)[entityInChunk.index] = value;
-					Interlocked.Increment(ref Unsafe.AsRef<int>(this.testCounter));
-					return true;
-				}
-			}
-
-			return false;
-		}
-
-		public bool SetComponentData_NOVERSION<T>(Entity entity, in T value) where T : unmanaged
-		{
-			if(TryGetEntityInChunk(entity, out var entityInChunk))
-			{
-				var hashCode = TypeRegistry<T>.info.hashCode;
-				var componentIndex = ArchetypeUtility.GetComponentIndex(entityInChunk.chunk->archetype, hashCode);
-
-				if(componentIndex >= 0)
-				{
-					ChunkUtility.GetComponentDataPtr<T>(entityInChunk.chunk, componentIndex)[entityInChunk.index] = value;
+					ChunkUtility.MarkAsChanged(entityInChunk.chunk, componentIndex);
 					return true;
 				}
 			}
@@ -112,6 +98,9 @@ namespace Checs
 		/// <summary>
 		/// Sets the value of a specific component type for all entities in the buffer.
 		/// </summary>
+		/// <remarks>
+		/// Increments the change version.
+		/// </remarks>
 		/// <param name="entities">The buffer of entities.</param>
 		/// <param name="value">The value of the component type.</param>
 		/// <typeparam name="T">The component type of the value.</typeparam>
@@ -140,6 +129,7 @@ namespace Checs
 				if(componentIndex >= 0)
 				{
 					ChunkUtility.RepeatComponentData<T>(entityBatch.chunk, entityBatch.index, entityBatch.count, componentIndex, in value);
+					ChunkUtility.MarkAsChanged(entityBatch.chunk, componentIndex);
 					touched += entityBatch.count;
 				}
 			}
@@ -151,6 +141,9 @@ namespace Checs
 		/// Adds a specific component type to the entity and (or)
 		/// sets the value of the component.
 		/// </summary>
+		/// <remarks>
+		/// Increments the change version.
+		/// </remarks>
 		/// <param name="entity">The entity.</param>
 		/// <param name="value">The value of the component type.</param>
 		/// <typeparam name="T">The component type of the value.</typeparam>
@@ -164,7 +157,7 @@ namespace Checs
 
 				if(componentIndex < 0)
 				{
-					var archetype = CreateArchetypeInternal(entityInChunk.chunk->archetype, &typeInfo.hashCode, &typeInfo.size, 1);
+					var archetype = ExtendArchetype(entityInChunk.chunk->archetype, typeInfo.hashCode, typeInfo.size);
 					MoveEntityBatch(new EntityBatch(entityInChunk), GetArchetypeInternal(archetype));
 
 					entityInChunk = this.entityStore.entitiesInChunk[entity.index];
@@ -172,6 +165,7 @@ namespace Checs
 				}
 
 				ChunkUtility.GetComponentDataPtr<T>(entityInChunk.chunk, componentIndex)[entityInChunk.index] = value;
+				ChunkUtility.MarkAsChanged(entityInChunk.chunk, componentIndex);
 				return true;
 			}
 
@@ -182,6 +176,9 @@ namespace Checs
 		/// Adds a specific component type to the entity
 		/// and sets the value of the component.
 		/// </summary>
+		/// <remarks>
+		/// Increments the change version.
+		/// </remarks>
 		/// <param name="entity">The entity.</param>
 		/// <param name="value">The value of the component type.</param>
 		/// <typeparam name="T">The component type of the value.</typeparam>
@@ -195,13 +192,13 @@ namespace Checs
 
 				if(componentIndex < 0)
 				{
-					var archetype = CreateArchetypeInternal(entityInChunk.chunk->archetype, &typeInfo.hashCode, &typeInfo.size, 1);
+					var archetype = ExtendArchetype(entityInChunk.chunk->archetype, typeInfo.hashCode, typeInfo.size);
 					MoveEntityBatch(new EntityBatch(entityInChunk), GetArchetypeInternal(archetype));
 
 					entityInChunk = this.entityStore.entitiesInChunk[entity.index];
 					componentIndex = ArchetypeUtility.GetComponentIndex(entityInChunk.chunk->archetype, typeInfo.hashCode);
 					ChunkUtility.GetComponentDataPtr<T>(entityInChunk.chunk, componentIndex)[entityInChunk.index] = value;
-
+					ChunkUtility.MarkAsChanged(entityInChunk.chunk, componentIndex);
 					return true;
 				}
 			}
@@ -222,9 +219,9 @@ namespace Checs
 				var typeInfo = TypeRegistry<T>.info;
 				var componentIndex = ArchetypeUtility.GetComponentIndex(entityInChunk.chunk->archetype, typeInfo.hashCode);
 
-				if(componentIndex >= 0)
+				if(componentIndex > 0) // Entity cannot be removed.
 				{
-					var archetype = CreateArchetypeWithoutInternal(entityInChunk.chunk->archetype, &typeInfo.hashCode, 1);
+					var archetype = ExcludeFromArchetype(entityInChunk.chunk->archetype, componentIndex);
 					MoveEntityBatch(new EntityBatch(entityInChunk), GetArchetypeInternal(archetype));
 					return true;
 				}
@@ -261,6 +258,7 @@ namespace Checs
 				{
 					ChunkUtility.RepeatComponentData(entityBatch.chunk, entityBatch.index, entityBatch.count,
 						componentIndex, value, size);
+					ChunkUtility.MarkAsChanged(entityBatch.chunk, componentIndex);
 				}
 			}
 		}

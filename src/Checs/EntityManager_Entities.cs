@@ -124,30 +124,19 @@ namespace Checs
 		/// Destroys an entity.
 		/// </summary>
 		/// <param name="entity">The entity to destroy.</param>
-		/// <returns>True if the entity to destroy exists.</returns>
-		public bool DestroyEntity(Entity entity)
+		public void DestroyEntity(Entity entity)
 		{
 			if(TryGetEntityInChunk(entity, out var entityInChunk))
-			{
 				DestroyEntityBatch(new EntityBatch(entityInChunk));
-				return true;
-			}
-
-			return false;
 		}
 
 		/// <summary>
 		/// Destroys all existing entities in the buffer.
 		/// </summary>
 		/// <param name="entities">The buffer of entities to destroy.</param>
-		/// <returns>
-		/// The number of destroyed entities. If the number is not equal to the buffer size,
-		/// not all entities existed.
-		/// </returns>
-		public int DestroyEntity(ReadOnlySpan<Entity> entities)
+		public void DestroyEntity(ReadOnlySpan<Entity> entities)
 		{
 			var count = 0;
-			var destroyed = 0;
 
 			while(count < entities.Length)
 			{
@@ -158,54 +147,43 @@ namespace Checs
 				if(batch.chunk == null)
 					continue;
 
-				destroyed += batch.count;
-
 				DestroyEntityBatch(batch);
 			}
-
-			return destroyed;
 		}
 
 		/// <summary>
 		/// Destroys all entities in the archetype.
 		/// </summary>
 		/// <param name="archetype">The archetype of the entities.</param>
-		/// <returns>The number of destroyed entities.</returns>
-		public int DestroyEntity(EntityArchetype archetype)
+		public void DestroyEntity(EntityArchetype archetype)
 		{
 			var arch = GetArchetypeInternal(archetype);
-			return DestroyEntityInternal(arch);
+			DestroyEntityInternal(arch);
 		}
 
 		/// <summary>
 		/// Destroys all entities that match the query.
 		/// </summary>
 		/// <param name="query">The query that the entities must match.</param>
-		/// <returns>The number of destroyed entities.</returns>
-		public int DestroyEntity(EntityQuery query)
+		public void DestroyEntity(EntityQuery query)
 		{
 			var qry = GetQueryInternal(query);
 			UpdateQueryCache(qry);
 
-			var count = 0;
+			var count      = qry->archetypeList.count;
+			var archetypes = qry->archetypeList.archetypes;
 
-			for(int i = 0; i < qry->archetypeList.count; ++i)
-				count += DestroyEntityInternal(qry->archetypeList.archetypes[i]);
-
-			return count;
+			for(int i = 0; i < count; ++i)
+				DestroyEntityInternal(archetypes[i]);
 		}
 
-		internal int DestroyEntityInternal(Archetype* archetype)
+		internal void DestroyEntityInternal(Archetype* archetype)
 		{
-			var count = archetype->entityCount;
-
 			for(int i = 0; i < archetype->chunkList.count; ++i)
 			{
 				var chunk = archetype->chunkList.chunks[i];
 				DestroyEntityBatch(new EntityBatch(chunk));
 			}
-
-			return count;
 		}
 
 		/// <summary>
@@ -386,6 +364,7 @@ namespace Checs
 		internal void AllocateEntityBatch(EntityBatch batch)
 		{
 			ChunkUtility.ReserveEntities(batch.chunk, batch.count);
+			ChunkUtility.MarkAsChanged(batch.chunk, 0);
 			this.entityStore.Register(batch.chunk, batch.index, batch.count);
 		}
 
@@ -400,6 +379,7 @@ namespace Checs
 				var dstBatch = GetLargestFreeEntityBatch(dstChunk, batch.count - count);
 				
 				ChunkUtility.MoveEntities(batch.chunk, batch.index + count, dstChunk, dstBatch.index, dstBatch.count);
+
 				this.entityStore.Update(dstChunk, dstBatch.index, dstBatch.count);
 				
 				count += dstBatch.count;

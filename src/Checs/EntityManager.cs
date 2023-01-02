@@ -18,7 +18,7 @@ namespace Checs
 
 		internal HashMap<int> lookupTable; // 24 - 104
 
-		internal int* testCounter;
+		internal ChangeVersion changeVersion;
 
 		/// <summary>
 		/// Returns the number of entities.
@@ -42,8 +42,7 @@ namespace Checs
 			this.queryStore = new QueryStore(16);
 			this.chunkStore = new ChunkStore();
 			this.lookupTable = new HashMap<int>(16);
-
-			this.testCounter = (int*)Allocator.Alloc(sizeof(int));
+			this.changeVersion = new ChangeVersion(0);
 
 			CreateEmptyArchetype();
 			CreateUniversialQuery();
@@ -61,6 +60,7 @@ namespace Checs
 			this.queryStore.Dispose();
 			this.chunkStore.Dispose();
 			this.lookupTable.Dispose();
+			this.changeVersion.Dispose();
 		}
 	}
 }

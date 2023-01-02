@@ -7,6 +7,13 @@ namespace Checs
 	internal static unsafe class ArchetypeUtility
 	{
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static uint GetHashCode(uint* hashCodes, int count)
+		{
+			// First bit is always zero to avoid collisions with queries.
+			return xxHash.GetHashCode(hashCodes, count) & 0x7FFFFFFF;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static void CalculateComponentOffsets(int* sizes, int* offsets, int count, int chunkCapacity)
 		{
 			offsets[0] = 0;
@@ -46,35 +53,6 @@ namespace Checs
 
 			return -1;
 		}
-		
-		public static bool HasChanged(Archetype* archetype, int version)
-		{
-			var versions = Archetype.GetComponentVersions(archetype);
-
-			for(int i = 0; i < archetype->componentCount; ++i)
-			{
-				if((versions[i] - version) > 0)
-					return true;
-			}
-
-			return false;
-		}
-
-		public static bool HasChanged(Archetype* archetype, uint hashCode, int version)
-		{
-			var index = ArchetypeUtility.GetComponentIndex(archetype, hashCode);
-			var versions = Archetype.GetComponentVersions(archetype);
-
-			if(index > 0)
-			{
-				var entityDiff    = versions[0]     - version;
-				var componentDiff = versions[index] - version;
-		
-				return entityDiff > 0 || componentDiff > 0;
-			}
-			
-			return false;
-		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int CalculateFreeChunkSlots(Archetype* archetype)
@@ -91,6 +69,47 @@ namespace Checs
 		
 			Unsafe.CopyBlockUnaligned(hashCodes, componentHashCodes, (uint)byteCount);
 			Unsafe.CopyBlockUnaligned(sizes, componentSizes, (uint)byteCount);
+		}
+
+		public static void CopyInsert(Archetype* archetype, uint* dstHashCodes, int* dstSizes, uint hashCode, int size)
+		{
+			var hashCodes = Archetype.GetComponentHashCodes(archetype);
+			var sizes     = Archetype.GetComponentSizes(archetype);
+
+			var count = archetype->componentCount;
+			var index = 0;
+
+			while(index < count && hashCode > hashCodes[index])
+				++index;
+			
+			Unsafe.CopyBlockUnaligned(dstHashCodes, hashCodes, (uint)(sizeof(uint) * index));
+			Unsafe.CopyBlockUnaligned(dstSizes, sizes, (uint)(sizeof(int) * index));
+
+			dstHashCodes[index] = hashCode;
+			dstSizes[index]     = size;
+			
+			var startIndex = index + 1;
+			var remaining = count - index;
+
+			Unsafe.CopyBlockUnaligned(dstHashCodes + startIndex, hashCodes + index, (uint)(sizeof(uint) * remaining));
+			Unsafe.CopyBlockUnaligned(dstSizes + startIndex, sizes + index, (uint)(sizeof(int) * remaining));
+		}
+
+		public static void CopyRemoveAt(Archetype* archetype, uint* dstHashCodes, int* dstSizes, int componentIndex)
+		{
+			var hashCodes = Archetype.GetComponentHashCodes(archetype);
+			var sizes     = Archetype.GetComponentSizes(archetype);
+
+			var count = archetype->componentCount;
+			
+			Unsafe.CopyBlockUnaligned(dstHashCodes, hashCodes, (uint)(sizeof(uint) * componentIndex));
+			Unsafe.CopyBlockUnaligned(dstSizes, sizes, (uint)(sizeof(int) * componentIndex));
+			
+			var startIndex = componentIndex + 1;
+			var remaining = count - componentIndex;
+
+			Unsafe.CopyBlockUnaligned(dstHashCodes + componentIndex, hashCodes + startIndex, (uint)(sizeof(uint) * remaining));
+			Unsafe.CopyBlockUnaligned(dstSizes + componentIndex, sizes + startIndex, (uint)(sizeof(int) * remaining));
 		}
 
 		public static int Union(Archetype* lhs, Archetype* rhs, uint* hashCodes, int* sizes)
@@ -204,6 +223,35 @@ namespace Checs
 			}
 
 			return count;
+		}
+
+		public static bool DidChange(Archetype* archetype, uint changeVersion)
+		{
+			var versions = Archetype.GetComponentVersions(archetype);
+
+			for(int i = 0; i < archetype->componentCount; ++i)
+			{
+				if(ChangeVersion.DidChange(versions[i], changeVersion))
+					return true;
+			}
+
+			return false;
+		}
+
+		public static bool DidChange(Archetype* archetype, uint hashCode, uint changeVersion)
+		{
+			var index    = ArchetypeUtility.GetComponentIndex(archetype, hashCode);
+			var versions = Archetype.GetComponentVersions(archetype);
+
+			if(index > 0)
+			{
+				var entityChanged    = ChangeVersion.DidChange(versions[0], changeVersion);
+				var componentChanged = ChangeVersion.DidChange(versions[index], changeVersion);
+				
+				return entityChanged || componentChanged;
+			}
+			
+			return false;
 		}
 	}
 }

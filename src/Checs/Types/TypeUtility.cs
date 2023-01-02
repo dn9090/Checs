@@ -87,30 +87,31 @@ namespace Checs
 
 		public static int Sort(uint* hashCodes, int* sizes, int count)
 		{
-			var actualCount = count;
+			var actualCount = 0;
 
-			for(int i = 1; i < count; ++i)
+			for(int i = 0; i < count; ++i)
 			{
 				var hashCode = hashCodes[i];
-				var size = sizes[i];
-				var index = i;
-				var isDuplicate = 0;
+				var size     = sizes[i];
+				var index = 0;
 
-				for(; index > 0 && hashCode.CompareTo(hashCodes[index - 1]) <= 0; --index)
-				{
-					if(hashCode == hashCodes[index - 1])
-					{
-						hashCode = 0;
-						isDuplicate = 1;
-					}
-
-					hashCodes[index] = hashCodes[index - 1];
-					sizes[index] = sizes[index - 1];
-				}
+				while(index < actualCount && hashCode > hashCodes[index])
+					++index;
 				
-				actualCount -= isDuplicate;
+				if(hashCode == hashCodes[index])
+					continue;
+
+				var next = actualCount++;
+
+				while(next > index)
+				{
+					hashCodes[next] = hashCodes[next - 1];
+					sizes[next]     = sizes[next - 1];
+					--next;
+				}
+
 				hashCodes[index] = hashCode;
-				sizes[index] = size;
+				sizes[index]     = size;
 			}
 
 			return actualCount;

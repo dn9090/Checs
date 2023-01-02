@@ -20,8 +20,6 @@ namespace Checs
 
 		public uint version;
 
-		public uint chunkVersion;
-
 		public EntityInChunk* entitiesInChunk;
 
 		public EntityStore(int initialCapacity)
@@ -32,7 +30,6 @@ namespace Checs
 			this.nextFreeIndex = -1;
 			this.entitiesInChunk = (EntityInChunk*)Allocator.Calloc(sizeof(EntityInChunk) * this.capacity);
 			this.version = 1;
-			this.chunkVersion = 1;
 		}
 
 		public void EnsureCapacity(int requestedCapacity)
@@ -51,7 +48,7 @@ namespace Checs
 
 		public void Register(Chunk* chunk, int startIndex, int count)
 		{
-			ChunkUtility.IncrementVersion(chunk, ref this.chunkVersion);
+			ChunkUtility.IncrementVersion(chunk);
 
 			var entities = ChunkUtility.GetEntities(chunk, 0);
 			var registeredCount = 0;
@@ -102,7 +99,7 @@ namespace Checs
 
 		public void Update(Chunk* chunk, int startIndex, int count)
 		{
-			ChunkUtility.IncrementVersion(chunk, ref this.chunkVersion);
+			ChunkUtility.IncrementVersion(chunk);
 
 			var entities = ChunkUtility.GetEntities(chunk, startIndex);
 			

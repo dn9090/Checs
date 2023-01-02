@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 namespace Checs
 {
 	[StructLayout(LayoutKind.Sequential, Size = 16)]
-	public struct ComponentBuffer2<T> where T : unmanaged
+	public struct ComponentBuffer<T> where T : unmanaged
 	{
 		internal unsafe Chunk* chunk;
 
@@ -14,7 +14,7 @@ namespace Checs
 
 		internal uint chunkVersion;
 
-		internal unsafe ComponentBuffer2(Chunk* chunk, ComponentBuffer* buffer)
+		internal unsafe ComponentBuffer(Chunk* chunk, ComponentBuffer* buffer)
 		{
 			this.chunk = chunk;
 			this.buffer = buffer;
@@ -50,6 +50,8 @@ namespace Checs
 
 		public Span<T> AsSpan()
 		{
+			CheckModified();
+			
 			unsafe
 			{
 				return new Span<T>(this.buffer->values, this.buffer->count);

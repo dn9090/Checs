@@ -65,9 +65,8 @@ namespace Checs
 		internal EntityQuery CreateQueryInternal(uint* includeHashCodes, int includeCount,
 			uint* excludeHashCodes, int excludeCount)
 		{
-			var includeHashCode = xxHash.GetHashCode(includeHashCodes, includeCount);
-			var excludeHashCode = xxHash.GetHashCode(excludeHashCodes, excludeCount);
-			var hashCode = (includeHashCode ^ (397 * excludeHashCode)) | 0x80000000;
+			var hashCode = QueryUtility.GetHashCode(includeHashCodes, includeCount,
+				excludeHashCodes, excludeCount);
 
 			if(this.lookupTable.TryGet(hashCode, out var index))
 				return new EntityQuery(index);
@@ -77,7 +76,8 @@ namespace Checs
 
 			this.lookupTable.Add(hashCode, query->index);
 			
-			Query.Construct(query, includeHashCodes, includeCount, excludeHashCodes, excludeCount);
+			Query.Construct(query, includeHashCodes, includeCount,
+				excludeHashCodes, excludeCount);
 			
 			return new EntityQuery(query->index);
 		}
@@ -213,6 +213,10 @@ namespace Checs
 
 		internal void UpdateQueryCache(Query* query)
 		{
+			// Only update if there are new "unknown" archetypes.
+			if(query->knownArchetypeCount == this.archetypeStore.count)
+				return;
+
 			if(query->index == 0) // Rework if query is stored somewhere.
 			{
 				query->archetypeList.archetypes = this.archetypeStore.archetypes;
@@ -221,18 +225,15 @@ namespace Checs
 				return;
 			}
 
-			if(query->knownArchetypeCount < this.archetypeStore.count)
-			{
-				var count      = this.archetypeStore.count - query->knownArchetypeCount;
-				var archetypes = this.archetypeStore.archetypes + query->knownArchetypeCount;
-				
-				query->knownArchetypeCount = this.archetypeStore.count;
+			var count      = this.archetypeStore.count      - query->knownArchetypeCount;
+			var archetypes = this.archetypeStore.archetypes + query->knownArchetypeCount;
+			
+			query->knownArchetypeCount = this.archetypeStore.count;
 
-				for(int i = 0; i < count; ++i)
-				{
-					if(QueryUtility.Matches(query, archetypes[i]))
-						query->archetypeList.Add(archetypes[i]);
-				}
+			for(int i = 0; i < count; ++i)
+			{
+				if(QueryUtility.Matches(query, archetypes[i]))
+					query->archetypeList.Add(archetypes[i]);
 			}
 		}
 	}

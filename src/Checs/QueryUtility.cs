@@ -8,6 +8,17 @@ namespace Checs
 {
 	internal static unsafe class QueryUtility
 	{
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static uint GetHashCode(uint* includeHashCodes, int includeCount,
+			uint* excludeHashCodes, int excludeCount)
+		{
+			var includeHashCode = xxHash.GetHashCode(includeHashCodes, includeCount);
+			var excludeHashCode = xxHash.GetHashCode(excludeHashCodes, excludeCount);
+
+			// First bit is always one to avoid collisions with archetypes.
+			return(includeHashCode ^ (397 * excludeHashCode)) | 0x80000000;
+		}
+
 		public static bool Matches(Query* query, Archetype* archetype)
 		{
 			var hashCodes = Archetype.GetComponentHashCodes(archetype);

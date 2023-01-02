@@ -6,7 +6,7 @@ using SFML.Window;
 
 namespace Checs.NBodies
 {
-	public class InputSystem : System
+	public class CameraSystem : System
 	{
 		public const float DragSpeed = 10f;
 
@@ -22,7 +22,7 @@ namespace Checs.NBodies
 
 		public bool isDragging;
 
-		public InputSystem(RenderWindow window, View view)
+		public CameraSystem(RenderWindow window, View view)
 		{
 			this.window = window;
 			this.window.MouseWheelScrolled += OnMouseScroll;

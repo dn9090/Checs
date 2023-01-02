@@ -17,10 +17,10 @@ namespace Checs.NBodies
 			using var manager = new EntityManager();
 
 			var systems = new System[] {
-				new InputSystem(window, view),
 				new GeneratorSystem(),
 				new PhysicsSystem(),
 				new ColorSystem(),
+				new CameraSystem(window, view),
 				new RenderingSystem(window)
 			};
 

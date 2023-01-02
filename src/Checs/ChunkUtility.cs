@@ -24,7 +24,7 @@ namespace Checs
 
 			return Chunk.BufferSize / blockSize;
 		}
-
+		
 		public static int CalculateBufferCapacity(int blockSize)
 		{
 			int blockSizeWithEntity = blockSize + sizeof(Entity);
@@ -261,11 +261,13 @@ namespace Checs
 			return count;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Entity* GetEntities(Chunk* chunk, int index)
 		{
 			return (Entity*)chunk->buffer + index;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static T* GetComponentDataPtr<T>(Chunk* chunk, int componentIndex) where T : unmanaged
 		{
 			var componentOffsets = Archetype.GetComponentOffsets(chunk->archetype);
@@ -273,7 +275,7 @@ namespace Checs
 
 			return (T*)(buffer + componentOffsets[componentIndex]);
 		}
-
+		
 		public static byte* GetComponentDataPtr(Chunk* chunk, int index, int componentIndex)
 		{
 			var componentSizes   = Archetype.GetComponentSizes(chunk->archetype);
@@ -340,12 +342,26 @@ namespace Checs
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static void IncrementVersion(Chunk* chunk, ref uint version)
+		public static void IncrementVersion(Chunk* chunk)
 		{
-			var value = version++;
+			chunk->version = ++chunk->archetype->chunkVersion;
+		}
 
-			chunk->version = value;
-			chunk->archetype->chunkVersion = value;
+		public static void MarkAsChanged(Chunk* chunk, int componentIndex)
+		{
+			// FIXME: At the moment, adding entities is a destructive operation
+			//        for change versions:
+			//        ChunkA = 0, ChunkB = 0    Entity = 0, CompA = 0, CompB = 0
+			//        -------> GetChangeVersion = 0
+			//        ChunkA = 0, ChunkB = 1    Entity = 1, CompA = 0, CompB = 0
+			//        ChunkA = 2, ChunkB = 1    Entity = 1, CompA = 0, CompB = 2
+			//        -------> DidChange(ChunkA) returns true but should return false.
+			
+			var versions = Archetype.GetComponentVersions(chunk->archetype);
+			var changeVersion = chunk->archetype->changeVersion.Increment();
+
+			chunk->changeVersion     = changeVersion;
+			versions[componentIndex] = changeVersion;
 		}
 	}
 }

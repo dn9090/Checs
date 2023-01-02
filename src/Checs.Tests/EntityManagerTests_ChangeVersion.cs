@@ -7,184 +7,134 @@ namespace Checs.Tests
 {
 	public partial class EntityManagerTests_ChangeVersion
 	{
-		/*
 		[Fact]
-		public void CreateEntityIncrementsChangeVersion()
+		public void CreateEntityIncrements()
 		{
 			using EntityManager manager = new EntityManager();
 
 			{
-				var changeVersion = new EntityChangeVersion();
 				var archetype = manager.CreateArchetype();
-
-				Assert.False(manager.HasChanged(archetype, changeVersion));
+				
+				var changeVersion = manager.GetChangeVersion();
+				
+				Assert.False(manager.DidChange(changeVersion));
+				Assert.False(manager.DidChange(changeVersion, archetype));
 
 				manager.CreateEntity(archetype);
 
-				Assert.True(manager.HasChanged(archetype, changeVersion));
+				Assert.True(manager.DidChange(changeVersion));
+				Assert.True(manager.DidChange(changeVersion, archetype));
 			}
 
 			{
-				var changeVersion = new EntityChangeVersion();
-				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
+				var archetype = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
 
-				Assert.False(manager.HasChanged(archetype, changeVersion));
+				var changeVersion = manager.GetChangeVersion();
+				
+				Assert.False(manager.DidChange(changeVersion));
+				Assert.False(manager.DidChange(changeVersion, archetype));
 
 				manager.CreateEntity(archetype);
 
-				Assert.True(manager.HasChanged(archetype, changeVersion));
-			}
-		}
+				Assert.True(manager.DidChange(changeVersion));
+				Assert.True(manager.DidChange(changeVersion, archetype));
 
-		//[Fact]
-		public void DestroyEntityIncrementsChangeVersion()
-		{
-			using EntityManager manager = new EntityManager();
+				changeVersion = manager.GetChangeVersion();
+				
+				Assert.False(manager.DidChange(changeVersion));
+				Assert.False(manager.DidChange(changeVersion, archetype));
 
-			{
-				var changeVersion = new EntityChangeVersion();
-				var archetype = manager.CreateArchetype();
-				var entity = manager.CreateEntity(archetype);
+				manager.CreateEntity(archetype);
 
-				manager.UpdateChangeVersion(ref changeVersion);
-
-				Assert.False(manager.HasChanged(entity, changeVersion));
-				Assert.False(manager.HasChanged(archetype, changeVersion));
-
-				manager.DestroyEntity(entity);
-
-				Assert.True(manager.HasChanged(entity, changeVersion));
-				Assert.True(manager.HasChanged(archetype, changeVersion));
-			}
-
-			{
-				var changeVersion = new EntityChangeVersion();
-				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
-				var entity = manager.CreateEntity(archetype);
-
-				manager.UpdateChangeVersion(ref changeVersion);
-
-				Assert.False(manager.HasChanged(entity, changeVersion));
-				Assert.False(manager.HasChanged(archetype, changeVersion));
-
-				manager.DestroyEntity(entity);
-
-				Assert.True(manager.HasChanged(entity, changeVersion));
-				Assert.True(manager.HasChanged(archetype, changeVersion));
+				Assert.True(manager.DidChange(changeVersion));
+				Assert.True(manager.DidChange(changeVersion, archetype));
 			}
 		}
 
 		[Fact]
-		public void SetComponentDataIncrementsChangeVersion()
+		public void DestroyEntityDoesNotIncrement()
 		{
 			using EntityManager manager = new EntityManager();
 
 			{
-				var changeVersion = new EntityChangeVersion();
+				var archetype = manager.CreateArchetype();
+				var entity = manager.CreateEntity(archetype);
+
+				var changeVersion = manager.GetChangeVersion();
+
+				Assert.False(manager.DidChange(changeVersion));
+				Assert.False(manager.DidChange(changeVersion, archetype));
+
+				manager.DestroyEntity(entity);
+
+				Assert.False(manager.DidChange(changeVersion));
+				Assert.False(manager.DidChange(changeVersion, archetype));
+			}
+		}
+
+		[Fact]
+		public void SetComponentDataIncrements()
+		{
+			using EntityManager manager = new EntityManager();
+
+			{
 				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
 				var entity = manager.CreateEntity(archetype);
 
-				manager.UpdateChangeVersion(ref changeVersion);
+				var changeVersion = manager.GetChangeVersion();
 
-				Assert.False(manager.HasChanged(entity, changeVersion));
-				Assert.False(manager.HasChanged<Position>(entity, changeVersion));
-				Assert.False(manager.HasChanged(archetype, changeVersion));
-				Assert.False(manager.HasChanged<Position>(archetype, changeVersion));
-
+				Assert.False(manager.DidChange(changeVersion));
+				Assert.False(manager.DidChange(changeVersion, entity, ComponentType.Of<Position>()));
+				Assert.False(manager.DidChange(changeVersion, archetype));
 
 				manager.SetComponentData(entity, new Position(1f, 2f, 3f));
 
-				Assert.True(manager.HasChanged(entity, changeVersion));
-				Assert.True(manager.HasChanged<Position>(entity, changeVersion));
-				Assert.True(manager.HasChanged(archetype, changeVersion));
-				Assert.True(manager.HasChanged<Position>(archetype, changeVersion));
-			}
-		}
+				Assert.True(manager.DidChange(changeVersion));
+				Assert.True(manager.DidChange(changeVersion, entity, ComponentType.Of<Position>()));
+				Assert.True(manager.DidChange(changeVersion, archetype));
 
-		[Fact]
-		public void OnlyTableWriteAccessIncrementsChangeVersion()
-		{
-			using EntityManager manager = new EntityManager();
+				changeVersion = manager.GetChangeVersion();
+
+				Assert.False(manager.DidChange(changeVersion));
+				Assert.False(manager.DidChange(changeVersion, entity, ComponentType.Of<Position>()));
+				Assert.False(manager.DidChange(changeVersion, archetype));
+			}
 
 			{
-				var changeVersion = new EntityChangeVersion();
 				var archetype = manager.CreateArchetype(new[] {
 					ComponentType.Of<Position>(),
-					ComponentType.Of<Rotation>(),
-					ComponentType.Of<Scale>(),
-					ComponentType.Of<Velocity>()
+					ComponentType.Of<Rotation>()
 				});
-				manager.CreateEntity(archetype, 900);
-				manager.UpdateChangeVersion(ref changeVersion);
-
-				manager.ForEach(archetype, static (table, changeVersion) => {
-					Assert.False(table.HasChanged(changeVersion));
-
-					var positions = table.GetComponentData<Position>();
-					var rotations = table.GetComponentData<Rotation>();
-					var scale     = table.GetComponentDataReadOnly<Scale>();
-					var Velocity  = table.GetComponentDataReadOnly<Velocity>();
-				}, changeVersion);
-
-				manager.ForEach(archetype, static (table, changeVersion) => {
-					Assert.True(table.HasChanged(changeVersion));
-					Assert.True(table.HasChanged<Position>(changeVersion));
-					Assert.True(table.HasChanged<Rotation>(changeVersion));
-					Assert.False(table.HasChanged<Scale>(changeVersion));
-					Assert.False(table.HasChanged<Velocity>(changeVersion));
-				}, changeVersion);
-			}
-		}
-
-		[Fact]
-		public void SetComponentDataLookupIncrementsChangeVersion()
-		{
-			using EntityManager manager = new EntityManager();
-			
-
-			{
-				var changeVersion = new EntityChangeVersion();
-				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
 				var entity = manager.CreateEntity(archetype);
-				var lookup = new ComponentDataLookup<Position>(manager);
 
-				manager.UpdateChangeVersion(ref changeVersion);
+				var changeVersion = manager.GetChangeVersion();
 
-				Assert.False(manager.HasChanged(entity, changeVersion));
-				Assert.False(manager.HasChanged<Position>(entity, changeVersion));
-				Assert.False(manager.HasChanged(archetype, changeVersion));
-				Assert.False(manager.HasChanged<Position>(archetype, changeVersion));
+				Assert.False(manager.DidChange(changeVersion));
+				Assert.False(manager.DidChange(changeVersion, entity));
+				Assert.False(manager.DidChange(changeVersion, archetype));
 
-				lookup[entity] = new Position(1f, 2f, 3f);
+				manager.SetComponentData(entity, new Position(1f, 2f, 3f));
+				manager.SetOrAddComponentData(entity, new Rotation(4f, 3f, 2f, 1f));
 
-				Assert.True(manager.HasChanged(entity, changeVersion));
-				Assert.True(manager.HasChanged<Position>(entity, changeVersion));
-				Assert.True(manager.HasChanged(archetype, changeVersion));
-				Assert.True(manager.HasChanged<Position>(archetype, changeVersion));
+				Assert.True(manager.DidChange(changeVersion));
+				Assert.True(manager.DidChange(changeVersion, entity));
+				Assert.True(manager.DidChange(changeVersion, archetype));
+
+				changeVersion = manager.GetChangeVersion();
+
+				Assert.False(manager.DidChange(changeVersion));
+				Assert.False(manager.DidChange(changeVersion, entity));
+				Assert.False(manager.DidChange(changeVersion, archetype));
+
+				manager.SetComponentData(entity, new Position(3f, 2f, 1f));
+
+				Assert.True(manager.DidChange(changeVersion));
+				Assert.True(manager.DidChange(changeVersion, entity));
+				Assert.True(manager.DidChange(changeVersion, archetype));
 			}
-
-			{
-				var changeVersion = new EntityChangeVersion();
-				var archetype = manager.CreateArchetype(new[] {
-					ComponentType.Of<Position>(),
-					ComponentType.Of<Rotation>(),
-					ComponentType.Of<Scale>(),
-					ComponentType.Of<Velocity>()
-				});
-				var lookup = new ComponentDataLookup<Scale>(manager);
-				var entities = new Entity[300];
-				manager.CreateEntity(archetype, entities);
-
-				manager.UpdateChangeVersion(ref changeVersion);
-
-				Assert.False(manager.HasChanged<Scale>(entities[0], changeVersion));
-				Assert.False(manager.HasChanged<Scale>(entities[entities.Length - 1], changeVersion));
-				
-				lookup[entities[0]] = new Scale(1f, 2f, 3f);
-
-				Assert.True(manager.HasChanged<Scale>(entities[0], changeVersion));
-				Assert.False(manager.HasChanged<Scale>(entities[entities.Length - 1], changeVersion));
-			}
-		}*/
+		}
 	}
 }
