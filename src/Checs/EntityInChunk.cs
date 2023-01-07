@@ -7,10 +7,20 @@ namespace Checs
 	[StructLayout(LayoutKind.Sequential)]
 	internal unsafe struct EntityInChunk
 	{
+		/// <summary>
+		/// TThe chunk in which the entity is stored.
+		/// </summary>
 		public Chunk* chunk;
-	
-		public int index; // we dont care if the entity is destroyed, so reuse that as next value
 
+		/// <summary>
+		/// If the entity exists, the index is the index of the entity in the chunk.
+		/// If the entity does not exist, the index points to the next free index.
+		/// </summary>
+		public int index;
+
+		/// <summary>
+		/// The version of the entity.
+		/// </summary>
 		public uint version;
 
 		public EntityInChunk(Chunk* chunk, int index, uint version)

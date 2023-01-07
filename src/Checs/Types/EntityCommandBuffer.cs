@@ -418,7 +418,7 @@ namespace Checs
 			var chunk = this.head->current;
 			var header = (CommandHeader*)(chunk->buffer + chunk->used);
 
-			header->type = type;
+			header->type      = type;
 			header->byteCount = alignedByteCount;
 
 			chunk->used         += alignedByteCount;

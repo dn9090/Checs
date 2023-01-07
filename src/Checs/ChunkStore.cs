@@ -29,6 +29,9 @@ namespace Checs
 			return chunk;
 		}
 
+		// TODO: (Superchunk API) When multiple chunks are requested, allocate one superchunk and split
+		//       the superchunks to normal sized chunks. Add only the superchunk to the head.
+
 		public Chunk* Allocate()
 		{
 			var chunk = (Chunk*)Allocator.AlignedAlloc(Chunk.ChunkSize, Chunk.Alignment);

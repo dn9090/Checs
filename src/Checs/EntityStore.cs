@@ -50,27 +50,30 @@ namespace Checs
 		{
 			ChunkUtility.IncrementVersion(chunk);
 
-			var entities = ChunkUtility.GetEntities(chunk, 0);
+			var entities = ChunkUtility.GetEntities(chunk, 0); // TODO: Replace with startIndex
 			var registeredCount = 0;
+			var freeIndex = this.nextFreeIndex;
 	
-			while(this.nextFreeIndex >= 0 && registeredCount < count)
+			while(freeIndex >= 0 && registeredCount < count)
 			{
-				var index = this.nextFreeIndex;
-				this.nextFreeIndex = this.entitiesInChunk[this.nextFreeIndex].index;
+				var index        = freeIndex;
+				var indexInChunk = startIndex + registeredCount++;
 
-				var indexInChunk = startIndex + registeredCount++; 
+				freeIndex = this.entitiesInChunk[index].index;
 
 				this.entitiesInChunk[index] = new EntityInChunk(chunk, indexInChunk, this.version);
-				entities[indexInChunk] = new Entity(index, this.version);
+				entities[indexInChunk]      = new Entity(index, this.version);
 			}
+
+			this.nextFreeIndex = freeIndex;
 
 			while(registeredCount < count)
 			{
-				var index = this.reserved++;
+				var index        = this.reserved++;
 				var indexInChunk = startIndex + registeredCount++;
 
 				this.entitiesInChunk[index] = new EntityInChunk(chunk, indexInChunk, this.version);
-				entities[indexInChunk] = new Entity(index, this.version);
+				entities[indexInChunk]      = new Entity(index, this.version);
 			}
 
 			this.count += count;
@@ -88,8 +91,9 @@ namespace Checs
 
 			for(int i = count - 1; i >= 0; --i)
 			{
-				this.entitiesInChunk[entities[i].index].index = freeIndex;
+				this.entitiesInChunk[entities[i].index].index   = freeIndex;
 				this.entitiesInChunk[entities[i].index].version = 0;
+				
 				freeIndex = entities[i].index;
 			}
 

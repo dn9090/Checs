@@ -61,11 +61,15 @@ namespace Checs
 
 				if(this.archetypeList != null && (uint)this.archetypeIndex < (uint)this.archetypeList->count)
 				{
+					CheckModified();
+
 					this.archetype  = archetypeList->archetypes[this.archetypeIndex++];
 					this.chunkIndex = 0;
 					this.chunkCount = this.archetype->chunkList.count;
 					goto Retry;
 				}
+
+				CheckModified(); // TODO
 			}
 
 			table = default;
@@ -77,6 +81,13 @@ namespace Checs
 		{
 			this.chunkIndex = -1;
 			this.archetypeIndex = -1;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		internal unsafe void CheckModified()
+		{
+			if(this.archetype != null && this.archetype->chunkVersion != this.chunkVersion)
+				throw new InvalidOperationException("Entity possibly moved or destroyed.");
 		}
 	}
 }

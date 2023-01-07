@@ -136,5 +136,45 @@ namespace Checs.Tests
 				Assert.True(manager.DidChange(changeVersion, archetype));
 			}
 		}
+
+		[Fact]
+		public void GetComponentDataReadOnlyDoesNotIncrement()
+		{
+			using EntityManager manager = new EntityManager();
+
+			{
+				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
+				manager.CreateEntity(archetype, 10);
+
+				var changeVersion = manager.GetChangeVersion();
+
+				manager.ForEach(archetype, (table, manager) => {
+					table.GetComponentDataReadOnly<Position>();
+				});
+
+				Assert.False(manager.DidChange(changeVersion));
+				Assert.False(manager.DidChange(changeVersion, archetype));
+			}
+		}
+
+		[Fact]
+		public void GetComponentIncrements()
+		{
+			using EntityManager manager = new EntityManager();
+
+			{
+				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
+				manager.CreateEntity(archetype, 10);
+
+				var changeVersion = manager.GetChangeVersion();
+
+				manager.ForEach(archetype, (table, manager) => {
+					table.GetComponentData<Position>();
+				});
+
+				Assert.True(manager.DidChange(changeVersion));
+				Assert.True(manager.DidChange(changeVersion, archetype));
+			}
+		}
 	}
 }

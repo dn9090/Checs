@@ -19,8 +19,13 @@ namespace Checs
 	{
 		public static Dictionary<uint, TypeInfo> infos = new Dictionary<uint, TypeInfo>(16);
 
+		public static object _lock_ = new object();
+
 		public static TypeInfo GetTypeInfo<T>()
 		{
+			// This method should only be called from a thread-safe context
+			// like a static constructor.
+
 			var type = typeof(T);
 			var hashCode = TypeUtility.GetHashCode(type);
 
@@ -34,17 +39,21 @@ namespace Checs
 				type = type
 			};
 
-			infos.Add(hashCode, info);
+			infos.TryAdd(hashCode, info);
 
 			return info;
 		}
 
-		public static TypeInfo GetTypeInfo(Type type) // TODO: Lock
+		public static TypeInfo GetTypeInfo(Type type) 
 		{
 			var hashCode = TypeUtility.GetHashCode(type);
+			var info     = new TypeInfo();
 
-			if(infos.TryGetValue(hashCode, out TypeInfo info))
-				return info;
+			lock(_lock_)
+			{
+				if(infos.TryGetValue(hashCode, out info))
+					return info;
+			}
 			
 			info = new TypeInfo
 			{
@@ -53,7 +62,12 @@ namespace Checs
 				type = type
 			};
 
-			infos.Add(hashCode, info);
+			lock(_lock_)
+			{
+				// At this point, another thread may have already added
+				// the type information.
+				infos.TryAdd(hashCode, info);
+			}
 
 			return info;
 		}

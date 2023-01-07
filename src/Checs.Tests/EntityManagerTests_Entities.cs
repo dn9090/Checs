@@ -60,6 +60,11 @@ namespace Checs.Tests
 
 				Assert.Equal(entities[entities.Length - 1].index, entities[0].index + entities.Length - 1);
 			}
+
+			{
+				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
+				Assert.Throws<ArgumentOutOfRangeException>(() => manager.CreateEntity(archetype, -1));
+			}
 		}
 
 		[Fact]

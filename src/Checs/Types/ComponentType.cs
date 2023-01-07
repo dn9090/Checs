@@ -8,6 +8,9 @@ namespace Checs
 	/// <summary>
 	/// Holds type information of a component.
 	/// </summary>
+	/// <remarks>
+	/// Note that at the moment only unmanaged types are supported.
+	/// </remarks>
 	public readonly struct ComponentType : IEquatable<ComponentType>
 	{
 		public bool isEntity => hashCode == 0;
@@ -58,12 +61,29 @@ namespace Checs
 			return (int)this.hashCode;
 		}
 
+		/// <summary>
+		/// Looks up the component type based on the specified type.
+		/// The component type information is cached.
+		/// </summary>
+		/// <typeparam name="T">The type.</typeparam>
+		/// <returns>The component type.</returns>
 		public static ComponentType Of<T>() where T : unmanaged
 		{
 			var info = TypeRegistry<T>.info;
 			return new ComponentType(info);
 		}
-	
+
+		/// <summary>
+		/// Looks up the component type based on the type instance.
+		/// The component type information is cached.
+		/// </summary>
+		/// <remarks>
+		/// When this function is given a previously unknown type instance,
+		/// this function uses reflection to get the component type information
+		/// (which may trigger the garbage collector).
+		/// </remarks>
+		/// <param name="type">The type instance.</param>
+		/// <returns>The component type.</returns>
 		public static ComponentType Of(Type type)
 		{
 			var info = TypeRegistry.GetTypeInfo(type);

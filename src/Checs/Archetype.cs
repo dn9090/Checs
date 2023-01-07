@@ -7,24 +7,42 @@ namespace Checs
 	[StructLayout(LayoutKind.Explicit)]
 	internal unsafe struct Archetype : IDisposable
 	{
+		/// <summary>
+		/// The index of the archetype.
+		/// </summary>
 		[FieldOffset(0)]
 		public int index;
 
+		/// <summary>
+		/// The number of entities in the archetype.
+		/// </summary>
 		[FieldOffset(4)]
 		public int entityCount;
 
+		/// <summary>
+		/// The number of components of the archetype.
+		/// </summary>
 		[FieldOffset(8)]
 		public int componentCount;
 
+		/// <summary>
+		/// The maximum number of entities in a chunk.
+		/// </summary>
 		[FieldOffset(12)]
 		public int chunkCapacity;
 
+		/// <summary>
+		/// The highest chunk version of in the archetype.
+		/// </summary>
 		[FieldOffset(16)]
 		public uint chunkVersion;
 
 		[FieldOffset(24)]
 		public ChangeVersion changeVersion;
 
+		/// <summary>
+		/// List of chunks that belong to the archetype.
+		/// </summary>
 		[FieldOffset(32)]
 		public ChunkList chunkList;
 

@@ -66,7 +66,6 @@ namespace Checs
 		}
 	}
 
-
 	internal unsafe struct ComponentBuffer : IDisposable
 	{
 		public static int initialCapacity = 16;
