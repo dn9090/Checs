@@ -45,6 +45,10 @@ namespace Checs
 			}
 
 			Allocator.Free(this.queries);
+
+			this.queries  = null;
+			this.count    = 0;
+			this.capacity = 0;
 		}
 	}
 }

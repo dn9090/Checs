@@ -47,7 +47,7 @@ namespace Checs
 			var qry = GetQueryInternal(query);
 			UpdateQueryCache(qry);
 
-			var count = qry->archetypeList.count;
+			var count      = qry->archetypeList.count;
 			var archetypes = qry->archetypeList.archetypes;
 			
 			for(int i = 0; i < count; ++i)
@@ -58,7 +58,7 @@ namespace Checs
 		{
 			var chunkVersion = archetype->chunkVersion;
 
-			var count = archetype->chunkList.count;
+			var count  = archetype->chunkList.count;
 			var chunks = archetype->chunkList.chunks;
 
 			for(int i = 0; i < count; ++i)
@@ -83,8 +83,8 @@ namespace Checs
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		internal static void CheckModified(Archetype* archetype, uint version)
 		{
-			if(version != archetype->chunkVersion) // TODO
-				throw new InvalidOperationException("Cannot modifiy archetypes that are accessed.");
+			if(version != archetype->chunkVersion)
+				ThrowHelper.ThrowWriteOnReadExeception(archetype);
 		}
 	}
 }

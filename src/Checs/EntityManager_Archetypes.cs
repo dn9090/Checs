@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace Checs
 {
@@ -105,7 +106,7 @@ namespace Checs
 			var bufferSize    = Archetype.SizeOfBuffer(count);
 
 			if(chunkCapacity == 0)
-				throw new ArgumentOutOfRangeException("The archetype is too large.");
+				ThrowHelper.ThrowArchetypeTooLargeExeception();
 
 			var archetype = this.archetypeStore.Aquire(bufferSize);
 
@@ -254,6 +255,8 @@ namespace Checs
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		internal Archetype* GetArchetypeInternal(EntityArchetype archetype)
 		{
+			Debug.Assert((uint)archetype.index < this.archetypeStore.count);
+
 			return this.archetypeStore.archetypes[archetype.index];
 		}
 

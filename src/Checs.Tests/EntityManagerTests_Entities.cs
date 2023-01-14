@@ -31,7 +31,6 @@ namespace Checs.Tests
 
 				Assert.True(manager.Exists(entity));
 				Assert.Equal(0, entity.index);
-				
 			}
 
 			{

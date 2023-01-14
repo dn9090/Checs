@@ -5,14 +5,8 @@ using System.Numerics;
 
 namespace Checs
 {
-	internal unsafe static class AllocatorNOpe
+	internal unsafe static class Allocator
 	{
-		// I'm the native allocator, I'm bi-modal. Just run
-		//   for(int i = 0; i < count; ++i)
-		//	   pointers[i] = (byte*)NativeMemory.Alloc(1024 * 16);
-		//   for(int i = 0; i < count; ++i)
-		//     NativeMemory.Free(pointers[i]);
-		// and look at this shit. Latency between 9 and 18 us/op.
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static void* Alloc(int bytes)
 		{

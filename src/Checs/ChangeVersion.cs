@@ -34,6 +34,8 @@ namespace Checs
 		public void Dispose()
 		{
 			Allocator.Free(this.handle);
+
+			this.handle = null;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]

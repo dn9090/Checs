@@ -51,18 +51,15 @@ Destroy an single entity with:
 ```CSharp
 var entity = manager.CreateEntity();
 
-bool success = manager.DestroyEntity(entity)
+manager.DestroyEntity(entity)
 ```
-An overload can be used to destroy multiple entities:
+Or an overload can be used to destroy multiple entities:
 ```CSharp
 var entites = new Entity[10];
 manager.CreateEntity(entities);
 
-int count = manager.DestroyEntities(entities);
+manager.DestroyEntities(entities);
 ```
-The return value gives back the number of entities that were destroyed.
-This value can differ from the number of entities that were passed in if some
-entities in the buffer did not exist.
 
 > How do I check if an entity exists?
 
@@ -156,7 +153,7 @@ var entities = new Entity[count];
 manager.GetEntities(query, entities);
 ```
 
-> How do I run systems or functions on the entities?
+> How do I run systems or functions on entities?
 
 Basically, there are three different ways to run systems on entities, but only two of them really scale efficiently.
 The simplest variant is to set the component values via the entity:
@@ -177,7 +174,7 @@ for(int i = 0; i < entities.Length; ++i)
 }
 ```
 If the same value is used for all entities, the operation can be batched
-(which leads to an speed-up):
+(which leads to a speed-up):
 ```CSharp
 manager.SetComponentData(entities, new Position(1f, 2f, 3f));
 ```
@@ -185,7 +182,10 @@ But this variant does not scale well because it is not guaranteed that the entit
 Furthermore, in the general case, a system should always run on all entities that meet the system's conditions.
 The next simpler variant is to run a system on all entities of an archetype or query:
 ```CSharp
-var query = manager.CreateQuery(includeType: ComponentType.Of<Position>());
+var query = manager.CreateQuery(includeTypes: new[] {
+	ComponentType.Of<Position>(),
+	ComponentType.Of<Rotation>()
+});
 
 manager.ForEach(query, static (table, _) => {
 	var positions = table.GetComponentData<Rotation>();

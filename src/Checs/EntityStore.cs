@@ -116,10 +116,12 @@ namespace Checs
 		
 		public void Dispose()
 		{
-			this.count = 0;
-			this.reserved = 0;
-			this.capacity = 0;
 			Allocator.Free(this.entitiesInChunk);
+
+			this.entitiesInChunk = null;
+			this.count           = 0;
+			this.reserved        = 0;
+			this.capacity        = 0;
 		}
 	}
 }

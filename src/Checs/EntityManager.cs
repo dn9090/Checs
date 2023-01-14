@@ -5,18 +5,22 @@ using System.Runtime.InteropServices;
 
 namespace Checs
 {
-	[StructLayout(LayoutKind.Sequential)]
+	/// <summary>
+	/// The central data structure that manages all entities, archetypes
+	/// and components.
+	/// </summary>
+	[StructLayout(LayoutKind.Sequential, Size = 128)]
 	public unsafe partial class EntityManager : IDisposable
 	{
-		internal EntityStore entityStore; // 32 - 32
+		internal EntityStore entityStore;
 
-		internal ArchetypeStore archetypeStore; // 16 - 48
+		internal ArchetypeStore archetypeStore;
 
-		internal QueryStore queryStore; // 16- 64
+		internal QueryStore queryStore;
 
-		internal ChunkStore chunkStore; // 16 - 80
+		internal ChunkStore chunkStore;
 
-		internal HashMap<int> lookupTable; // 24 - 104
+		internal HashMap<int> lookupTable;
 
 		internal ChangeVersion changeVersion;
 
@@ -37,21 +41,21 @@ namespace Checs
 
 		public EntityManager()
 		{
-			this.entityStore = new EntityStore(16);
+			this.entityStore    = new EntityStore(16);
 			this.archetypeStore = new ArchetypeStore(16);
-			this.queryStore = new QueryStore(16);
-			this.chunkStore = new ChunkStore();
-			this.lookupTable = new HashMap<int>(16);
-			this.changeVersion = new ChangeVersion(0);
+			this.queryStore     = new QueryStore(16);
+			this.chunkStore     = new ChunkStore();
+			this.lookupTable    = new HashMap<int>(16);
+			this.changeVersion  = new ChangeVersion(0);
 
 			CreateEmptyArchetype();
 			CreateUniversialQuery();
 		}
 
-		/*~EntityManager()
+		~EntityManager()
 		{
 			Dispose();
-		}*/
+		}
 
 		public void Dispose()
 		{
@@ -61,6 +65,8 @@ namespace Checs
 			this.chunkStore.Dispose();
 			this.lookupTable.Dispose();
 			this.changeVersion.Dispose();
+
+			GC.SuppressFinalize(this);
 		}
 	}
 }

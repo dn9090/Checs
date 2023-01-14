@@ -45,6 +45,10 @@ namespace Checs
 			}
 
 			Allocator.Free(this.archetypes);
+
+			this.archetypes = null;
+			this.count      = 0;
+			this.capacity   = 0;
 		}
 	}
 }

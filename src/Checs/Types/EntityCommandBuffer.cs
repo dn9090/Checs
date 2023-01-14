@@ -488,4 +488,12 @@ namespace Checs
 			chunk->prevCommand->type    = CommandType.None;
 		}
 	}
+
+	internal static unsafe class CommandUtility
+	{
+		public static Span<Entity> AsSpan(EntityCommand* command)
+		{
+			return new Span<Entity>(command + 1, command->count);
+		}
+	}
 }

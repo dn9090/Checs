@@ -82,6 +82,9 @@ namespace Checs
 
 				Allocator.AlignedFree(chunk);
 			}
+
+			this.head = IntPtr.Zero;
+			this.free = IntPtr.Zero;
 		}
 	}
 }

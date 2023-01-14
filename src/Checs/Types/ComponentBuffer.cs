@@ -62,7 +62,7 @@ namespace Checs
 		internal unsafe void CheckModified()
 		{
 			if(this.chunkVersion != chunk->version)
-				throw new InvalidOperationException("Entity possibly moved or destroyed.");
+				ThrowHelper.ThrowEntityMovedException();
 		}
 	}
 

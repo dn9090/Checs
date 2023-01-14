@@ -24,12 +24,6 @@ namespace Checs
 
 			return Chunk.BufferSize / blockSize;
 		}
-		
-		public static int CalculateBufferCapacity(int blockSize)
-		{
-			int blockSizeWithEntity = blockSize + sizeof(Entity);
-			return Chunk.BufferSize / blockSizeWithEntity;
-		}
 
 		public static void ZeroComponentData(Chunk* chunk, int index, int count)
 		{
@@ -187,7 +181,7 @@ namespace Checs
 				}
 
 				// This branch is always true if both indices point to the entity data,
-				// which decrements both indices to zero and exits the loop.
+				// which decrements both indices to less than zero and exits the loop.
 				if(srcHashCodes[srcAt] == dstHashCodes[dstAt])
 				{
 					var componentSize   = dstSizes[dstAt];
@@ -204,6 +198,16 @@ namespace Checs
 
 				--srcAt;
 			}
+		}
+
+		public static void Merge(Chunk* from, Chunk* to)
+		{
+			var count = from->count;
+
+			Copy(from, 0, to, to->count, count);
+
+			from->count = 0;
+			to->count  += count;
 		}
 
 		public static void ReserveEntities(Chunk* chunk, int count)

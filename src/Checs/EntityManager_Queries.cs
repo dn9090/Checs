@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace Checs
 {
@@ -85,6 +86,8 @@ namespace Checs
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		internal Query* GetQueryInternal(EntityQuery query)
 		{
+			Debug.Assert((uint)query.index < this.queryStore.count);
+
 			return this.queryStore.queries[query.index];
 		}
 
@@ -96,7 +99,7 @@ namespace Checs
 		/// <returns>True if the archetype matches the component types in the query.</returns>
 		public bool MatchesQuery(EntityQuery query, EntityArchetype archetype)
 		{
-			var qry = GetQueryInternal(query);
+			var qry  = GetQueryInternal(query);
 			var arch = GetArchetypeInternal(archetype);
 
 			return QueryUtility.Matches(qry, arch);
@@ -225,16 +228,17 @@ namespace Checs
 				return;
 			}
 
+			// Calculate the difference.
 			var count      = this.archetypeStore.count      - query->knownArchetypeCount;
 			var archetypes = this.archetypeStore.archetypes + query->knownArchetypeCount;
-			
-			query->knownArchetypeCount = this.archetypeStore.count;
 
 			for(int i = 0; i < count; ++i)
 			{
 				if(QueryUtility.Matches(query, archetypes[i]))
 					query->archetypeList.Add(archetypes[i]);
 			}
+
+			query->knownArchetypeCount = this.archetypeStore.count;
 		}
 	}
 }

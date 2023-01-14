@@ -63,9 +63,10 @@ namespace Checs
 				{
 					CheckModified();
 
-					this.archetype  = archetypeList->archetypes[this.archetypeIndex++];
-					this.chunkIndex = 0;
-					this.chunkCount = this.archetype->chunkList.count;
+					this.archetype    = archetypeList->archetypes[this.archetypeIndex++];
+					this.chunkIndex   = 0;
+					this.chunkCount   = this.archetype->chunkList.count;
+					this.chunkVersion = this.archetype->chunkVersion;
 					goto Retry;
 				}
 
@@ -87,7 +88,7 @@ namespace Checs
 		internal unsafe void CheckModified()
 		{
 			if(this.archetype != null && this.archetype->chunkVersion != this.chunkVersion)
-				throw new InvalidOperationException("Entity possibly moved or destroyed.");
+				ThrowHelper.ThrowWriteOnReadExeception(this.archetype);
 		}
 	}
 }

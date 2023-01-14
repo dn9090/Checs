@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace Checs
 {
-	internal unsafe static class Allocator
+	internal unsafe static class Allocator_Scratch
 	{
 		[StructLayout(LayoutKind.Sequential, Size = 64)]
 		internal struct Node
@@ -18,7 +18,7 @@ namespace Checs
 
 		public static long capacity;
 
-		static Allocator()
+		static Allocator_Scratch()
 		{
 			capacity = RoundUp(1_000_000_000);
 			used = 0;

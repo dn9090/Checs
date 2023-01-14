@@ -15,19 +15,37 @@ namespace Checs.Tests
 			Assert.False(iterator.TryNext(out _));
 		}
 
-		//[Fact]
+		[Fact]
 		public void ThrowsOnStructuralChanges()
 		{
 			using var manager = new EntityManager();
 			
-			var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
-			var entities = new Entity[10];
-			manager.CreateEntity(archetype, entities);
+			{
+				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
+				var entities = new Entity[10];
+				manager.CreateEntity(archetype, entities);
+				
+				Assert.Throws<InvalidOperationException>(() => {
+					using var it = manager.GetIterator(archetype);
+
+					while(it.TryNext(out var table))
+						manager.DestroyEntity(entities);
+				});
+			}
 			
-			Assert.Throws<InvalidOperationException>(() => {
-				using var it = manager.GetIterator(archetype);
-				manager.DestroyEntity(entities);
-			});
+			{
+				var query = manager.CreateQuery(includeType: ComponentType.Of<Position>());
+				var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
+				var entities = new Entity[10];
+				manager.CreateEntity(archetype, entities);
+				
+				Assert.Throws<InvalidOperationException>(() => {
+					using var it = manager.GetIterator(query);
+					
+					while(it.TryNext(out var table))
+						manager.DestroyEntity(entities);
+				});
+			}
 		}
 
 		[Fact]

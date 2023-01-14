@@ -14,7 +14,7 @@ namespace Checs
 		public void Playback(EntityCommandBuffer buffer)
 		{
 			if(buffer.manager != this)
-				return; // throw
+				throw new ArgumentException("The command buffer does not belong to the manager"); // TODO: Better name.
 			
 			buffer.CheckDisposed();
 
@@ -66,8 +66,7 @@ namespace Checs
 						while(TryPeekNextCommand(CommandType.Entity, ref peekOffset))
 						{
 							var entityCommand = (EntityCommand*)peekOffset.header;
-							var entityBuffer = new Span<Entity>(entityCommand + 1, entityCommand->count);
-
+							var entityBuffer  = CommandUtility.AsSpan(entityCommand);
 							DestroyEntity(entityBuffer);
 						}
 
@@ -93,8 +92,7 @@ namespace Checs
 						while(TryPeekNextCommand(CommandType.Entity, ref peekOffset))
 						{
 							var entityCommand = (EntityCommand*)peekOffset.header;
-							var entityBuffer = new Span<Entity>(entityCommand + 1, entityCommand->count);
-
+							var entityBuffer  = CommandUtility.AsSpan(entityCommand);
 							MoveEntity(entityBuffer, command->archetype);
 						}
 						break;
@@ -113,8 +111,7 @@ namespace Checs
 						while(TryPeekNextCommand(CommandType.Entity, ref peekOffset))
 						{
 							var entityCommand = (EntityCommand*)peekOffset.header;
-							var entityBuffer = new Span<Entity>(entityCommand + 1, entityCommand->count);
-
+							var entityBuffer  = CommandUtility.AsSpan(entityCommand);
 							WriteComponentDataInternal(entityBuffer, (byte*)(command + 1), command->size, command->hashCode);
 						}
 

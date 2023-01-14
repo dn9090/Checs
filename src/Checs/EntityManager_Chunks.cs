@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace Checs
 {
@@ -45,8 +46,9 @@ namespace Checs
 		{
 			Chunk* chunk = this.chunkStore.Aquire();
 
+			Debug.Assert(chunk != null);
+
 			ChunkUtility.ConstructChunk(chunk, archetype);
-			
 			archetype->chunkList.Add(chunk);
 
 			return chunk;
@@ -61,6 +63,11 @@ namespace Checs
 			}
 
 			// TODO: Dispose Buffers
+
+			// TODO: Merge chunks
+			//       var c1 = chunk->count < (archetype->chunkCapacity / 2);
+			//       var c2 = chunk2->count < (archetype->chunkCapacity / 2);
+			//       if(c1 && c2) ChunkUtility.MergeChunks(c1, c2);
 		}
 	}
 }
