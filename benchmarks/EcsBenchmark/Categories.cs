@@ -16,5 +16,6 @@ namespace EcsBenchmark
 		public const string SveltoECS        = "Svelto.ECS";
 
 		public const string CreateEntity = "CreateEntity";
+		public const string RunSystem    = "RunSystem";
 	}
 }

@@ -6,17 +6,20 @@ using EcsBenchmark;
 
 var switcher = BenchmarkSwitcher.FromTypes(new[] {
 	typeof(CreateEntity),
+	typeof(RunSystem),
 });
 
-var summaries = Array.Empty<Summary>();
-
 if(args.Length > 0)
-	summaries = switcher.Run(args).ToArray();
-else
-	summaries = switcher.RunAll().ToArray();
+{
+	switcher.Run(args);
+	return;
+}
 
-new Readme(summaries)
+var summaries = switcher.RunAll();
+new Readme(summaries.ToArray())
+	.WithUrl(Categories.Arch,       "https://github.com/genaray/Arch")
 	.WithUrl(Categories.Checs,      "https://github.com/dn9090/Checs")
 	.WithUrl(Categories.DefaultEcs, "https://github.com/Doraku/DefaultEcs")
 	.WithUrl(Categories.HypEcs,     "https://github.com/Byteron/HypEcs")
 	.WriteTo("README.md");
+

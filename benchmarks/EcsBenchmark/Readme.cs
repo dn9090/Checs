@@ -8,6 +8,8 @@ namespace EcsBenchmark
 {
 	public class Readme
 	{
+		public string[] skipColumns = { "Error", "StdDev" };
+
 		internal Dictionary<string, string> urls;
 
 		internal Summary[] summaries;
@@ -95,6 +97,7 @@ namespace EcsBenchmark
 
 		internal void WriteTable(StreamWriter writer, SummaryTable table)
 		{
+			var columns = new HashSet<int>();
 			var header = table.FullHeader;
 
 			writer.Write("| ");
@@ -104,6 +107,11 @@ namespace EcsBenchmark
 				if(!table.Columns[i].NeedToShow)
 					continue;
 
+				if(Array.IndexOf(skipColumns, header[i].Trim()) != -1)
+					continue;
+
+				columns.Add(i);
+				
 				PadLeft(writer, header[i], table.Columns[i].Width);
 				writer.Write(header[i]);
 				writer.Write(" |");
@@ -114,7 +122,7 @@ namespace EcsBenchmark
 
 			for(int i = 0; i < table.ColumnCount; ++i)
 			{
-				if(!table.Columns[i].NeedToShow)
+				if(!columns.Contains(i))
 					continue;
 
 				Line(writer, table.Columns[i].Width);
@@ -130,9 +138,9 @@ namespace EcsBenchmark
 
 				for(int i = 0; i < table.ColumnCount; ++i)
 				{
-					if(!table.Columns[i].NeedToShow)
+					if(!columns.Contains(i))
 						continue;
-					
+
 					PadLeft(writer, line[i], table.Columns[i].Width);
 					writer.Write(line[i]);
 					writer.Write(" |");

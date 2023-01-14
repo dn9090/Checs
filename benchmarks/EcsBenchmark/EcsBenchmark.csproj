@@ -36,6 +36,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Checs\Checs.csproj" />
+    <ProjectReference Include="..\..\src\Checs\Checs.csproj" />
   </ItemGroup>
 </Project>
