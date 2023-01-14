@@ -210,3 +210,19 @@ while(it.TryNext(out var table))
 		rotations[i] = new Rotation(positions[i].x, positions[i].y, positions[i].z, i);
 }
 ```
+
+> How do I create/destroy entities in a iterator/foreach loop?
+
+If entities in the same archetype as the iterator are added or destroyed, an exception
+occurs because the underlying memory layout may have changed.
+To avoid this problem defer the creation or destruction with the `EntityCommandBuffer` which can record commands and play them back at a later time:
+```CSharp
+using var cmd = manager.CreateCommandBuffer();
+
+manager.ForEach(query, (table, cmd) => {
+	// ...
+	cmd.CreateEntity(archetype);
+}, cmd)
+
+manager.Playback(cmd);
+```

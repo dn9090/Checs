@@ -37,7 +37,7 @@ namespace EcsBenchmark
 		
 		internal void WriteHeader(StreamWriter writer)
 		{
-			writer.WriteLine("# The super inoffical .NET ECS benchmark");
+			writer.WriteLine("# The super inofficial .NET ECS benchmark");
 			writer.Write("This projects compares different ECS frameworks in various benchmarks. ");
 			writer.Write("The goal is to get a quick overview of the performance of the ECS frameworks in selected situations.");
 			writer.WriteLine();
