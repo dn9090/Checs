@@ -119,7 +119,7 @@ namespace Checs.Tests
 		}
 
 		[Fact]
-		public void Instantiable()
+		public void Instantiatable()
 		{
 			using EntityManager manager = new EntityManager();
 

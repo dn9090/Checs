@@ -46,9 +46,16 @@ namespace Checs
 			NativeMemory.AlignedFree(ptr);
 		}
 		
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int RoundToPowerOfTwo(int value)
 		{
 			return (int)BitOperations.RoundUpToPowerOf2((uint)value);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		internal static int Align16(int byteCount)
+		{
+			return ((byteCount - 1) | 15) + 1;
 		}
 	}
 }

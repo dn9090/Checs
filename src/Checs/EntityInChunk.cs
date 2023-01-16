@@ -19,7 +19,7 @@ namespace Checs
 		public int index;
 
 		/// <summary>
-		/// The version of the entity.
+		/// The version of the entity. A value of 0 is used as tombstone.
 		/// </summary>
 		public uint version;
 

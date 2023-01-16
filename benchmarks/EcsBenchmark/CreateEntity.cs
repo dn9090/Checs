@@ -1,6 +1,5 @@
 using System;
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Configs;
 
 namespace EcsBenchmark
 {

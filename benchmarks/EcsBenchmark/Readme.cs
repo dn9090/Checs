@@ -33,8 +33,12 @@ namespace EcsBenchmark
 
 			WriteHeader(sw);
 
+			sw.WriteLine("## Results");
+
 			for(int i = 0; i < this.summaries.Length; ++i)
 				WriteSummary(sw, this.summaries[i]);
+
+			WriteContributing(sw);
 		}
 		
 		internal void WriteHeader(StreamWriter writer)
@@ -43,6 +47,22 @@ namespace EcsBenchmark
 			writer.Write("This projects compares different ECS frameworks in various benchmarks. ");
 			writer.Write("The goal is to get a quick overview of the performance of the ECS frameworks in selected situations.");
 			writer.WriteLine();
+			writer.WriteLine();
+
+			writer.Write("> Note that the benchmarks try to achieve the best possible execution time for the frameworks. ");
+			writer.Write("However, APIs may change or other APIs may be better suited for the benchmark. ");
+			writer.Write("In such cases, please contact the author.");
+			writer.WriteLine();
+			writer.WriteLine();
+		}
+
+		internal void WriteContributing(StreamWriter writer)
+		{
+			writer.WriteLine("## Contributing");
+			writer.WriteLine("### Adding a framework");
+			writer.WriteLine("...");
+			writer.WriteLine("### Create a new benchmark");
+			writer.WriteLine("...");
 		}
 
 		internal void WriteSummary(StreamWriter writer, Summary summary)
@@ -55,6 +75,8 @@ namespace EcsBenchmark
 			writer.WriteLine();
 
 			WriteTable(writer, summary.Table);
+
+			writer.WriteLine();
 		}
 
 		internal void WriteInfo(StreamWriter writer, Summary summary)
@@ -62,14 +84,13 @@ namespace EcsBenchmark
 			writer.WriteLine("<details>");
 			writer.WriteLine("\t<summary>Environment and runtimes</summary>");
 			writer.WriteLine();
+			writer.WriteLine("```");
 
 			foreach(string info in summary.HostEnvironmentInfo.ToFormattedString())
-			{
 				writer.WriteLine(info);
-				writer.WriteLine();
-			}
 
 			writer.WriteLine(summary.AllRuntimes);
+			writer.WriteLine("```");
 			writer.WriteLine("</details>");
 		}
 

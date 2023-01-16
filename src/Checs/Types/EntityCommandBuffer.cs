@@ -407,7 +407,7 @@ namespace Checs
 
 		internal unsafe CommandHeader* Bump(CommandType type, int byteCount)
 		{
-			var alignedByteCount = Align16(byteCount);
+			var alignedByteCount = Allocator.Align16(byteCount);
 			var capacity = this.head->current->capacity;
 
 			if(capacity < alignedByteCount)
@@ -431,7 +431,7 @@ namespace Checs
 		internal unsafe CommandHeader* Bump(CommandType type, int byteCount,
 			int minByteCount, int maxByteCount, out int reservedByteCount)
 		{
-			var alignedByteCount = Align16(byteCount);
+			var alignedByteCount = Allocator.Align16(byteCount);
 			var capacity = this.head->current->capacity;
 
 			if(capacity < (alignedByteCount + minByteCount))
@@ -444,7 +444,7 @@ namespace Checs
 			var reservedCapacity = chunk->capacity - alignedByteCount;
 
 			reservedByteCount = reservedCapacity < maxByteCount ? reservedCapacity : maxByteCount;
-			var alignedReservedByteCount = Align16(reservedByteCount);
+			var alignedReservedByteCount = Allocator.Align16(reservedByteCount);
 
 			header->type      = type;
 			header->byteCount = alignedByteCount + alignedReservedByteCount;
@@ -470,12 +470,6 @@ namespace Checs
 		{
 			if(this.sequenceNumber != this.head->sequenceNumber)
 				throw new ObjectDisposedException(nameof(EntityCommandBuffer));
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		internal static int Align16(int byteCount)
-		{
-			return ((byteCount - 1) | 15) + 1;
 		}
 
 		internal unsafe static void ConstructChunk(CommandChunk* chunk)

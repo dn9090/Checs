@@ -210,7 +210,7 @@ namespace Checs
 		/// <param name="entity">The entity to clone.</param>
 		/// <param name="count">The number of entities to instantiate.</param>
 		/// <returns>True if the entity to clone exists.</returns>
-		public bool Instantiate(Entity entity, int count)
+		public bool Instantiate(Entity entity, int count = 1)
 		{
 			if(TryGetEntityInChunk(entity, out var entityInChunk))
 			{
@@ -258,6 +258,26 @@ namespace Checs
 			}
 			
 			return false;
+		}
+
+		public void Instantiate(EntityPrefab prefab, Span<Entity> entities)
+		{
+			if(entities.Length == 0)
+				return;
+			
+			var archetype = CreateArchetype(prefab.GetComponentTypes());
+			var entity    = CreateEntity(archetype);
+
+			TryGetEntityInChunk(entity, out var entityInChunk);
+			prefab.CopyTo(entityInChunk.chunk, entityInChunk.index);
+
+			if(entities.Length > 1)
+			{
+				fixed(Entity* ptr = entities)
+					CloneEntityInternal(entityInChunk.chunk, entityInChunk.index, ptr + 1, entities.Length - 1);
+			}
+
+			entities[0] = entity;
 		}
 
 		internal void CloneEntityInternal(Chunk* srcChunk, int srcIndex, Entity* entities, int count)

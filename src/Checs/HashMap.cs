@@ -115,7 +115,9 @@ namespace Checs
 			Allocator.Free(this.hashes);
 			Allocator.Free(this.elements);
 
-			this.count = 0;
+			this.hashes   = null;
+			this.elements = null;
+			this.count    = 0;
 			this.capacity = 0;
 		}
 	}

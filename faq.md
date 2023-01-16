@@ -226,3 +226,31 @@ manager.ForEach(query, (table, cmd) => {
 
 manager.Playback(cmd);
 ```
+
+> How do I create an entity template or prefab with predefined component values that I can instantiate any time?
+
+Instead of setting the component values of an living entity in the manager use
+the `EntityPrefab` which will only store the component types and values (no entity is created).
+If the component type is not in the prefab, it will be added automatically:
+```CSharp
+var prefab = new EntityPrefab();
+
+prefab.SetComponentData(new Position(1f, 2f, 3f));
+prefab.SetComponentData(new Rotation(1f, 2f, 3f, 4f));
+
+using var manager = new EntityManager();
+var entities = new Entity[10];
+
+manager.Instantiate(prefab, entities);
+```
+It is also possible to preallocate the prefab with multiple component types at once
+(similar to the creation of archetypes):
+```CSharp
+var prefab = new EntityPrefab(new[] {
+	ComponentType.Of<Position>(),
+	ComponentType.Of<Rotation>(),
+	ComponentType.Of<Velocity>()
+});
+
+prefab.SetComponentData(new Velocity(1f, 2f, 3f));
+```

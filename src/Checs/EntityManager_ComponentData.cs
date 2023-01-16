@@ -11,7 +11,7 @@ namespace Checs
 	public unsafe partial class EntityManager
 	{
 		/// <summary>
-		/// Checks whether an entity has a specific type of component.
+		/// Checks whether an entity has a specific component type.
 		/// </summary>
 		/// <param name="entity">The entity.</param>
 		/// <typeparam name="T">The component type to check.</typeparam>
@@ -23,6 +23,20 @@ namespace Checs
 				var hashCode = TypeRegistry<T>.info.hashCode;
 				return ArchetypeUtility.GetComponentIndex(entityInChunk.chunk->archetype, hashCode) >= 0;
 			}
+
+			return false;
+		}
+
+		/// <summary>
+		/// Checks whether an entity has a specific component type.
+		/// </summary>
+		/// <param name="entity">The entity.</param>
+		/// <param name="type">The component type.</param>
+		/// <returns>True, if the entity exists and has the component type.</returns>
+		public bool HasComponentData(Entity entity, ComponentType type)
+		{
+			if(TryGetEntityInChunk(entity, out var entityInChunk))
+				return ArchetypeUtility.GetComponentIndex(entityInChunk.chunk->archetype, type.hashCode) >= 0;
 
 			return false;
 		}
@@ -101,7 +115,7 @@ namespace Checs
 		/// <remarks>
 		/// Increments the change version.
 		/// </remarks>
-		/// <param name="entities">The buffer of entities.</param>
+		/// <param name="entities">The entity buffer.</param>
 		/// <param name="value">The value of the component type.</param>
 		/// <typeparam name="T">The component type of the value.</typeparam>
 		/// <returns>
@@ -230,6 +244,16 @@ namespace Checs
 			return false;
 		}
 
+		/// <summary>
+		/// Writes byte wise the value of the component type for all entities in the buffer.
+		/// The length of the buffer must match the size of the component type in bytes.
+		/// </summary>
+		/// <remarks>
+		/// Increments the change version.
+		/// </remarks>
+		/// <param name="entities">The entity buffer.</param>
+		/// <param name="value">The bytes of the value.</param>
+		/// <param name="type">The component type.</param>
 		public void WriteComponentData(ReadOnlySpan<Entity> entities, ReadOnlySpan<byte> value, ComponentType type)
 		{
 			if(value.Length != type.size)
