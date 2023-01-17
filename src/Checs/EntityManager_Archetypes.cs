@@ -240,16 +240,8 @@ namespace Checs
 		/// <returns>The number of types in the buffer.</returns>
 		public int GetComponentTypes(EntityArchetype archetype, Span<ComponentType> types)
 		{
-			var arch      = GetArchetypeInternal(archetype);
-			var hashCodes = Archetype.GetComponentHashCodes(arch);
-			var sizes     = Archetype.GetComponentSizes(arch);
-
-			var count = arch->componentCount > types.Length ? types.Length : arch->componentCount;
-
-			for(int i = 0; i < count; ++i)
-				types[i] = new ComponentType(hashCodes[i], sizes[i]);
-
-			return count;
+			var arch = GetArchetypeInternal(archetype);
+			return ArchetypeUtility.GetComponentTypes(arch, 0, types);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]

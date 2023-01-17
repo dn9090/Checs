@@ -11,7 +11,7 @@ namespace Checs
 	/// <remarks>
 	/// Note that at the moment only unmanaged types are supported.
 	/// </remarks>
-	public readonly struct ComponentType : IEquatable<ComponentType>
+	public readonly struct ComponentType : IEquatable<ComponentType>, IComparable<ComponentType>
 	{
 		public bool isEntity => hashCode == 0;
 
@@ -36,30 +36,19 @@ namespace Checs
 			this.size = info.size;
 		}
 
-		public static bool operator ==(ComponentType lhs, ComponentType rhs)
-		{
-			return lhs.hashCode == rhs.hashCode;
-		}
-		
-		public static bool operator !=(ComponentType lhs, ComponentType rhs)
-		{
-			return lhs.hashCode != rhs.hashCode;
-		}
-		
-		public override bool Equals(object other)
-		{
-			return this == (ComponentType)other;
-		}
+		public static bool operator ==(ComponentType lhs, ComponentType rhs) =>
+			lhs.hashCode == rhs.hashCode;
 
-		public bool Equals(ComponentType other) 
-		{
-			return this == other;
-		}
+		public static bool operator !=(ComponentType lhs, ComponentType rhs) =>
+			lhs.hashCode != rhs.hashCode;
+		
+		public override bool Equals(object other) => this == (ComponentType)other;
 
-		public override int GetHashCode()
-		{
-			return (int)this.hashCode;
-		}
+		public bool Equals(ComponentType other) => this == other;
+
+		public int CompareTo(ComponentType other) => this.hashCode.CompareTo(other.hashCode);
+
+		public override int GetHashCode() => (int)this.hashCode;
 
 		/// <summary>
 		/// Looks up the component type based on the specified type.

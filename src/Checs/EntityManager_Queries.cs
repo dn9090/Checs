@@ -105,6 +105,12 @@ namespace Checs
 			return QueryUtility.Matches(qry, arch);
 		}
 
+		/// <summary>
+		/// Checks if two queries have overlapping component type requirements.
+		/// </summary>
+		/// <param name="lhs">The first query.</param>
+		/// <param name="rhs">The second query.</param>
+		/// <returns>True if the queries could match the same archetype.</returns>
 		public bool QueriesIntersect(EntityQuery lhs, EntityQuery rhs)
 		{
 			var qryLhs = GetQueryInternal(lhs);

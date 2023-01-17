@@ -254,3 +254,22 @@ var prefab = new EntityPrefab(new[] {
 
 prefab.SetComponentData(new Velocity(1f, 2f, 3f));
 ```
+A fluent API is also available:
+```CSharp
+var prefab = new EntityPrefab()
+	.WithComponentData<Position>()
+	.WithComponentData<Rotation>(new Rotation(1f, 2f, 3f, 4f));
+```
+
+> How do I convert an entity back to a prefab?
+
+Create a new prefab from an already existing entity:
+```CSharp
+var prefab = manager.ToPrefab(entity);
+
+if(prefab != null)
+{
+	prefab.SetComponentData<Position>(new Position(1f, 2f, 3f));
+	// ...
+}
+```

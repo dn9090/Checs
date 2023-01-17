@@ -135,5 +135,27 @@ namespace Checs.Tests
 				Assert.Equal(scale, manager.GetComponentData<Scale>(instances[0]));
 			}
 		}
+
+		[Fact]
+		public void Convertable()
+		{
+			using var manager = new EntityManager();
+
+			{
+				var prefab = new EntityPrefab(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var entity = manager.Instantiate(prefab);
+
+				var lhs = prefab.GetComponentTypes().ToArray();
+				var rhs = manager.ToPrefab(entity).GetComponentTypes().ToArray();
+
+				Array.Sort(lhs);
+				Array.Sort(rhs);
+
+				Assert.Equal(lhs, rhs);
+			}
+		}
 	}
 }

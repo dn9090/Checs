@@ -2,6 +2,10 @@ using System;
 
 namespace Checs
 {
+	/// <summary>
+	/// Stores component types and values that act as templates
+	/// from which entities can be instantiated.
+	/// </summary>
 	public class EntityPrefab
 	{
 		public static int initialCapacity = 8;
@@ -23,6 +27,12 @@ namespace Checs
 
 		public EntityPrefab(int typeCount, int byteCount)
 		{
+			if(typeCount < 0)
+				throw new ArgumentOutOfRangeException(nameof(typeCount));
+
+			if(byteCount < 0)
+				throw new ArgumentOutOfRangeException(nameof(byteCount));
+
 			this.types  = new ComponentType[typeCount];
 			this.buffer = new byte[byteCount];
 			this.count  = 0;
@@ -42,13 +52,23 @@ namespace Checs
 		{
 		}
 
+		internal unsafe EntityPrefab(Archetype* archetype)
+		{
+			this.count = archetype->componentCount - 1; // Skip entity.
+			this.types = new ComponentType[this.count];
+
+			ArchetypeUtility.GetComponentTypes(archetype, 1, this.types);
+
+			this.buffer = new byte[GetBufferSize(this.types)];
+		}
+
 		/// <summary>
 		/// Gets the component types in the prefab.
 		/// </summary>
 		/// <returns>The component types.</returns>
 		public ReadOnlySpan<ComponentType> GetComponentTypes()
 		{
-			return this.types.AsSpan(0, count);
+			return this.types.AsSpan(0, this.count);
 		}
 
 		/// <summary>
@@ -94,6 +114,12 @@ namespace Checs
 			return default;
 		}
 
+		/// <summary>
+		/// Sets the value of the component type or adds the component type
+		/// if it was not found.
+		/// </summary>
+		/// <param name="value">The value of the component type.</param>
+		/// <typeparam name="T">The component type of the value.</typeparam>
 		public void SetComponentData<T>(in T value = default) where T : unmanaged
 		{
 			var typeInfo = TypeRegistry<T>.info;
@@ -114,6 +140,19 @@ namespace Checs
 				fixed(byte* ptr = this.buffer)
 					*((T*)(ptr + offset)) = value; 
 			}
+		}
+
+		/// <summary>
+		/// Fluently sets the value of the component type or adds the component type
+		/// if it was not found.
+		/// </summary>
+		/// <param name="value">The value of the component type.</param>
+		/// <typeparam name="T">The component type of the value.</typeparam>
+		/// <returns>The prefab instance.</returns>
+		public EntityPrefab WithComponentData<T>(in T value = default) where T : unmanaged
+		{
+			SetComponentData<T>(in value);
+			return this;
 		}
 
 		internal void EnsureCapacity(int requestedCapacity)
@@ -153,6 +192,24 @@ namespace Checs
 
 				var src = this.buffer.AsSpan(offset, this.types[i].size);
 				var dst = new Span<byte>(componentPtr, this.types[i].size);
+
+				offset += Allocator.Align16(this.types[i].size);
+
+				src.CopyTo(dst);
+			}
+		}
+
+		internal unsafe void CopyFrom(Chunk* chunk, int index)
+		{
+			var offset = 0;
+			
+			for(int i = 0; i < this.count; ++i)
+			{
+				var componentIndex = ArchetypeUtility.GetComponentIndex(chunk->archetype, this.types[i].hashCode);
+				var componentPtr   = ChunkUtility.GetComponentDataPtr(chunk, index, componentIndex);
+
+				var src = new Span<byte>(componentPtr, this.types[i].size);
+				var dst = this.buffer.AsSpan(offset, this.types[i].size);
 
 				offset += Allocator.Align16(this.types[i].size);
 

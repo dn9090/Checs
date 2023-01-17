@@ -7,6 +7,8 @@ using EcsBenchmark;
 var switcher = BenchmarkSwitcher.FromTypes(new[] {
 	typeof(CreateEntity),
 	typeof(DestroyEntity),
+	typeof(AddComponent),
+	typeof(RemoveComponent),
 	typeof(RunSystem),
 });
 

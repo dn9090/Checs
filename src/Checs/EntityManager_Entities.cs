@@ -210,7 +210,7 @@ namespace Checs
 		/// <param name="entity">The entity to clone.</param>
 		/// <param name="count">The number of entities to instantiate.</param>
 		/// <returns>True if the entity to clone exists.</returns>
-		public bool Instantiate(Entity entity, int count = 1)
+		public bool Instantiate(Entity entity, int count)
 		{
 			if(TryGetEntityInChunk(entity, out var entityInChunk))
 			{
@@ -242,6 +242,21 @@ namespace Checs
 		}
 
 		/// <summary>
+		/// Clones an entity.
+		/// </summary>
+		/// <param name="entity">The entity to clone.</param>
+		/// <returns>The clone or default if the entity does not exist.</returns>
+		public Entity Instantiate(Entity entity)
+		{
+			Span<Entity> entities = stackalloc Entity[1];
+
+			if(Instantiate(entity, entities))
+				return entities[0];
+
+			return default;
+		}
+
+		/// <summary>
 		/// Clones an entity according to the size of the buffer
 		/// and stores them in the buffer.
 		/// </summary>
@@ -258,6 +273,14 @@ namespace Checs
 			}
 			
 			return false;
+		}
+
+		public Entity Instantiate(EntityPrefab prefab)
+		{
+			Span<Entity> entities = stackalloc Entity[1];
+			Instantiate(prefab, entities);
+
+			return entities[0];
 		}
 
 		public void Instantiate(EntityPrefab prefab, Span<Entity> entities)
@@ -379,6 +402,28 @@ namespace Checs
 			if(TryGetEntityInChunk(entity, out var entityInChunk))
 				return entityInChunk.chunk->archetype->componentCount;
 			return 0;
+		}
+
+		/// <summary>
+		/// Creates a prefab instance with all component types
+		/// and values of the entity.
+		/// </summary>
+		/// <param name="entity">The entity.</param>
+		/// <returns>
+		/// A new prefab instance or <c>null</c> if the entity
+		/// does not exist.
+		/// </returns>
+		public EntityPrefab ToPrefab(Entity entity)
+		{
+			if(TryGetEntityInChunk(entity, out var entityInChunk))
+			{
+				var prefab = new EntityPrefab(entityInChunk.chunk->archetype);
+				prefab.CopyFrom(entityInChunk.chunk, entityInChunk.index);
+
+				return prefab;
+			}
+
+			return null;
 		}
 
 		internal void AllocateEntityBatch(EntityBatch batch)

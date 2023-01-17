@@ -225,6 +225,19 @@ namespace Checs
 			return count;
 		}
 
+		public static int GetComponentTypes(Archetype* archetype, int startIndex, Span<ComponentType> types)
+		{
+			var hashCodes = Archetype.GetComponentHashCodes(archetype) + startIndex;
+			var sizes     = Archetype.GetComponentSizes(archetype)     + startIndex;
+			var count     = archetype->componentCount - startIndex;
+			var typeCount = count > types.Length ? types.Length : count;
+		
+			for(int i = 0; i < typeCount; ++i)
+				types[i] = new ComponentType(hashCodes[i], sizes[i]);
+
+			return count;
+		}
+
 		public static bool DidChange(Archetype* archetype, uint changeVersion)
 		{
 			var versions = Archetype.GetComponentVersions(archetype);

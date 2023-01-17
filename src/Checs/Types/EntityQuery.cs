@@ -3,7 +3,8 @@ using System;
 namespace Checs
 {
 	/// <summary>
-	/// Identifies a selection of archetypes.
+	/// Identifies a selection of archetypes based on a specified set
+	/// of included and excluded component types.
 	/// </summary>
 	public readonly struct EntityQuery : IEquatable<EntityQuery>, IComparable<EntityQuery>
 	{

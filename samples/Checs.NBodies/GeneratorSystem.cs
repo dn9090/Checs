@@ -74,8 +74,8 @@ namespace Checs.NBodies
 					masses[i].value    = BaseMass + ((float)rand.Next() / (float)int.MaxValue) * VarMass;
 
 					var radius = positions[i].value.Length();
-					var norm   = Vector2.Normalize(positions[i].value);
-					var rot    = Perpendicular(norm);
+					var normal = Vector2.Normalize(positions[i].value);
+					var rot    = Perpendicular(normal);
 					var v      = MathF.Sqrt(Initial / radius / masses[i].value / Speed);
 
 					velocities[i].value = rot * v;
