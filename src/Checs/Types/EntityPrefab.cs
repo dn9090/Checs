@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 
 namespace Checs
 {
@@ -103,13 +104,7 @@ namespace Checs
 			var offset   = GetOffset(typeInfo.hashCode);
 
 			if(offset >= 0)
-			{
-				unsafe
-				{
-					fixed(byte* ptr = this.buffer)
-						return *((T*)(ptr + offset));
-				}
-			}
+				return Unsafe.ReadUnaligned<T>(ref this.buffer[offset]);
 
 			return default;
 		}
@@ -135,11 +130,7 @@ namespace Checs
 				used  += Allocator.Align16(typeInfo.size);
 			}
 
-			unsafe
-			{
-				fixed(byte* ptr = this.buffer)
-					*((T*)(ptr + offset)) = value; 
-			}
+			Unsafe.WriteUnaligned(ref this.buffer[offset], value);
 		}
 
 		/// <summary>

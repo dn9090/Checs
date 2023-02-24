@@ -491,3 +491,19 @@ namespace Checs
 		}
 	}
 }
+
+/*
+
+1. Alloc command
+2. Alloc command + alloc fixed value
+3. Alloc command + alloc array
+   a) alloc command
+   b) alloc entity command + alloc array
+   c) -> alloc entity command + alloc array ->
+
+Bump(command size)
+Bump(command size, payload size)
+BumpArray(command size, element size, out int elementCount)
+
+
+*/

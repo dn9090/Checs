@@ -71,6 +71,20 @@ namespace Checs
 			return count;
 		}
 
+		public int GetFreeCount()
+		{
+			var count = 0;
+			var next = (Chunk*)this.free;
+
+			while(next != null)
+			{
+				next = next->free;
+				++count;
+			}
+
+			return count;
+		}
+
 		public void Dispose()
 		{
 			var next = (Chunk*)this.head;

@@ -53,7 +53,7 @@ namespace Checs
 
 			return -1;
 		}
-
+		
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int CalculateFreeChunkSlots(Archetype* archetype)
 		{

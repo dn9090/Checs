@@ -31,8 +31,8 @@ namespace Checs
 			if(type.isEntity)
 				return EntityArchetype.empty;
 
-			var hashCodes = stackalloc uint[2] { 0, type.hashCode };
-			var sizes     = stackalloc int[2] { sizeof(Entity), type.size };
+			var hashCodes = stackalloc uint[2] { Entity.info.hashCode, type.hashCode };
+			var sizes     = stackalloc int[2] { Entity.info.size, type.size };
 
 			return CreateArchetypeInternal(hashCodes, sizes, 2);
 		}
@@ -52,7 +52,8 @@ namespace Checs
 			var hashCodes = stackalloc uint[typeCount];
 			var sizes     = stackalloc int[typeCount];
 			
-			hashCodes[0] = 0; sizes[0] = sizeof(Entity);
+			hashCodes[0] = Entity.info.hashCode;
+			sizes[0]     = Entity.info.size;
 
 			var count = TypeUtility.Sort(types, hashCodes, sizes, 1);
 
@@ -183,10 +184,7 @@ namespace Checs
 		public Entity GetEntity(EntityArchetype archetype)
 		{
 			Span<Entity> buffer = stackalloc Entity[1];
-			var arch  = GetArchetypeInternal(archetype);
-			var found = GetEntitiesInternal(arch, buffer);
-			
-			return found > 0 ? buffer[0] : default;
+			return GetEntities(archetype, buffer) > 0 ? buffer[0] : default;
 		}
 
 		internal int GetEntitiesInternal(Archetype* archetype, Span<Entity> entities)
@@ -254,10 +252,8 @@ namespace Checs
 
 		internal void CreateEmptyArchetype()
 		{
-			var hashCode = 0u;
-			var size     = sizeof(Entity);
-
-			CreateArchetypeInternal(&hashCode, &size, 1);
+			var typeInfo = Entity.info;
+			CreateArchetypeInternal(&typeInfo.hashCode, &typeInfo.size, 1);
 		}
 
 		internal EntityArchetype ExtendArchetype(Archetype* archetype, uint hashCode, int size)
@@ -265,7 +261,7 @@ namespace Checs
 			var combinedCount     = archetype->componentCount + 1;
 			var combinedHashCodes = stackalloc uint[combinedCount];
 			var combinedSizes     = stackalloc int[combinedCount];
-			
+
 			ArchetypeUtility.CopyInsert(archetype, combinedHashCodes, combinedSizes, hashCode, size);
 
 			return CreateArchetypeInternal(combinedHashCodes, combinedSizes, combinedCount);

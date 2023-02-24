@@ -1,10 +1,14 @@
 using System;
-using System.Collections.Generic;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
 namespace Checs
 {
+	/*
+		https://github.com/dotnet/runtime/issues/78871
+	*/
+
 	internal unsafe static class TypeUtility
 	{
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -22,6 +26,24 @@ namespace Checs
 			// Marshal.SizeOf gives back the wrong size (and does not work with generic types).
 			var method = typeof(Unsafe).GetMethod(nameof(Unsafe.SizeOf)).MakeGenericMethod(type);
 			return (int)method.Invoke(null, null);
+		}
+
+		public static bool IsZeroSized(Type type)
+		{
+			// Based on: https://stackoverflow.com/a/27851610
+			
+			if(!type.IsValueType || type.IsPrimitive)
+				return false;
+			
+			var fields = type.GetFields((BindingFlags)0x34);
+
+			for(int i = 0; i < fields.Length; ++i)
+			{
+				if(!IsZeroSized(fields[i].FieldType))
+					return false;
+			}
+
+			return true;
 		}
 
 		public static int Sort(ReadOnlySpan<ComponentType> types, uint* hashCodes, int* sizes, int startIndex)

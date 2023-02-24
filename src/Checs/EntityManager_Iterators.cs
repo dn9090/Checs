@@ -6,7 +6,7 @@ namespace Checs
 {
 	public unsafe partial class EntityManager
 	{
-		public delegate void Action<T>(EntityTable table, T args);
+		public delegate void Action<T>(EntityTable table, T context);
 
 		/// <summary>
 		/// Performs the action on each <see cref="EntityTable"/> of the
@@ -22,10 +22,10 @@ namespace Checs
 			ForEach(archetype, action, this);
 		}
 
-		public void ForEach<T>(EntityArchetype archetype, Action<T> action, T args)
+		public void ForEach<T>(EntityArchetype archetype, Action<T> action, T context)
 		{
 			var arch = GetArchetypeInternal(archetype);
-			ForEachInternal(arch, action, args);
+			ForEachInternal(arch, action, context);
 		}
 
 		/// <summary>
@@ -42,7 +42,7 @@ namespace Checs
 			ForEach(query, action, this);
 		}
 
-		public void ForEach<T>(EntityQuery query, Action<T> action, T args)
+		public void ForEach<T>(EntityQuery query, Action<T> action, T context)
 		{
 			var qry = GetQueryInternal(query);
 			UpdateQueryCache(qry);
@@ -51,10 +51,10 @@ namespace Checs
 			var archetypes = qry->archetypeList.archetypes;
 			
 			for(int i = 0; i < count; ++i)
-				ForEachInternal(archetypes[i], action, args);
+				ForEachInternal(archetypes[i], action, context);
 		}
 
-		internal void ForEachInternal<T>(Archetype* archetype, Action<T> action, T args)
+		internal void ForEachInternal<T>(Archetype* archetype, Action<T> action, T context)
 		{
 			var chunkVersion = archetype->chunkVersion;
 
@@ -62,9 +62,26 @@ namespace Checs
 			var chunks = archetype->chunkList.chunks;
 
 			for(int i = 0; i < count; ++i)
-				action(new EntityTable(chunks[i]), args);
+				action(new EntityTable(chunks[i]), context);
 
 			CheckModified(archetype, chunkVersion);
+		}
+
+		public void ForEach<T>(ReadOnlySpan<Entity> entities, Action<T> action, T context)
+		{
+			var count = 0;
+
+			while(count < entities.Length)
+			{
+				var batch = GetFirstEntityBatch(entities.Slice(count));
+
+				count += batch.count;
+
+				if(batch.chunk == null)
+					continue;
+
+				action(new EntityTable(batch.chunk, batch.index, batch.count), context);
+			}
 		}
 		
 		public EntityIterator GetIterator(EntityArchetype archetype)

@@ -172,9 +172,38 @@ namespace Checs
 		public Entity GetEntity(EntityQuery query)
 		{
 			Span<Entity> buffer = stackalloc Entity[1];
-			var found = GetEntities(query, buffer);
-			
-			return found > 0 ? buffer[0] : default;
+			return GetEntities(query, buffer) > 0 ? buffer[0] : default;
+		}
+
+		public Entity GetEntity(ComponentType type)
+		{
+			Span<ComponentType> types = stackalloc ComponentType[] { type };
+			return GetEntity(types);
+		}
+
+		public Entity GetEntity(ReadOnlySpan<ComponentType> types)
+		{
+			Span<Entity> buffer = new Entity[1];
+
+			var includeHashCodes = stackalloc uint[types.Length];
+			var includeCount     = TypeUtility.Sort(types, includeHashCodes);
+
+			var count      = this.archetypeStore.count;
+			var archetypes = this.archetypeStore.archetypes;
+
+			for(int i = 0; i < count; ++i)
+			{
+				var hashCodes = Archetype.GetComponentHashCodes(archetypes[i]);
+
+				if(QueryUtility.Matches(includeHashCodes, includeCount, null, 0,
+					hashCodes, archetypes[i]->componentCount))
+				{
+					GetEntitiesInternal(archetypes[i], buffer);
+					return buffer[0];
+				}
+			}
+
+			return default;
 		}
 
 		/// <summary>

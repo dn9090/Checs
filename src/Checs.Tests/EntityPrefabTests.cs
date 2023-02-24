@@ -118,21 +118,37 @@ namespace Checs.Tests
 			}
 
 			{
+				var position = new Position(1f, 2f, 3f);
+				var rotation = new Rotation(4f, 3f, 2f, 1f);
+
+				var prefab = new EntityPrefab()
+					.WithComponentData<Position>(in position)
+					.WithComponentData<Rotation>(in rotation);
+				var instances = new Entity[10];
+				
+				manager.Instantiate(prefab, instances);
+
+				Assert.All(instances, x => {
+					Assert.Equal(position, manager.GetComponentData<Position>(x));
+					Assert.Equal(rotation, manager.GetComponentData<Rotation>(x));
+				});
+			}
+
+			{
 				var prefab = new EntityPrefab(new[] {
 					ComponentType.Of<Position>(),
 					ComponentType.Of<Rotation>()
 				});
-				var instances = new Entity[1];
 				var velocity  = new Velocity(1f, 2f, 3f);
 				var scale     = new Scale(3f, 2f, 1f);
 
 				prefab.SetComponentData<Velocity>(in velocity);
 				prefab.SetComponentData<Scale>(in scale);
 
-				manager.Instantiate(prefab, instances);
+				var entity = manager.Instantiate(prefab);
 
-				Assert.Equal(velocity, manager.GetComponentData<Velocity>(instances[0]));
-				Assert.Equal(scale, manager.GetComponentData<Scale>(instances[0]));
+				Assert.Equal(velocity, manager.GetComponentData<Velocity>(entity));
+				Assert.Equal(scale, manager.GetComponentData<Scale>(entity));
 			}
 		}
 
@@ -155,6 +171,21 @@ namespace Checs.Tests
 				Array.Sort(rhs);
 
 				Assert.Equal(lhs, rhs);
+			}
+
+			{
+				var position = new Position(1f, 2f, 3f);
+				var rotation = new Rotation(4f, 3f, 2f, 1f);
+
+				var prefab = new EntityPrefab()
+					.WithComponentData<Position>(in position)
+					.WithComponentData<Rotation>(in rotation);
+				
+				var entity        = manager.Instantiate(prefab);
+				var entityPrefab  = manager.ToPrefab(entity);
+
+				Assert.Equal(position, entityPrefab.GetComponentData<Position>());
+				Assert.Equal(rotation, entityPrefab.GetComponentData<Rotation>());
 			}
 		}
 	}

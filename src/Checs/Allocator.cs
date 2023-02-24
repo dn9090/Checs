@@ -22,10 +22,7 @@ namespace Checs
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static void* Calloc(int bytes)
 		{
-			var ptr = NativeMemory.Alloc((nuint)bytes);
-			Unsafe.InitBlockUnaligned(ptr, 0, (uint)bytes);
-
-			return ptr;
+			return NativeMemory.AllocZeroed((nuint)bytes);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -38,6 +35,12 @@ namespace Checs
 		public static void* AlignedAlloc(int bytes, int alignment)
 		{
 			return NativeMemory.AlignedAlloc((nuint)bytes, (nuint)alignment);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static void* AlignedRealloc(void* ptr, int bytes, int alignment)
+		{
+			return NativeMemory.AlignedRealloc(ptr, (nuint)bytes, (nuint)alignment);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]

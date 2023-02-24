@@ -9,10 +9,10 @@ namespace Checs
 	{
 		public static void ConstructChunk(Chunk* chunk, Archetype* archetype)
 		{
-			chunk->archetype     = archetype;
-			chunk->capacity      = archetype->chunkCapacity;
-			chunk->count         = 0;
-			chunk->version       = 0;
+			chunk->archetype = archetype;
+			chunk->capacity  = archetype->chunkCapacity;
+			chunk->count     = 0;
+			chunk->version   = 0;
 		}
 
 		public static int CalculateBufferCapacity(int* sizes, int count)
@@ -339,6 +339,7 @@ namespace Checs
 				*ptr++ = temp;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static void RepeatComponentData(Chunk* chunk, int index, int count, int componentIndex, byte* source, int byteCount)
 		{
 			var ptr = ChunkUtility.GetComponentDataPtr(chunk, index, componentIndex);

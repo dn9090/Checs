@@ -15,39 +15,41 @@ namespace Checs
 			var includeHashCode = xxHash.GetHashCode(includeHashCodes, includeCount);
 			var excludeHashCode = xxHash.GetHashCode(excludeHashCodes, excludeCount);
 
-			// First bit is always one to avoid collisions with archetypes.
+			// First bit is always set to avoid collisions with archetypes.
 			return(includeHashCode ^ (397 * excludeHashCode)) | 0x80000000;
 		}
 
 		public static bool Matches(Query* query, Archetype* archetype)
 		{
-			var hashCodes = Archetype.GetComponentHashCodes(archetype);
-			return Matches(query, hashCodes, archetype->componentCount);
-		}
-
-		public static bool Matches(Query* query, uint* componentHashCodes, int componentCount)
-		{
-			if(query->includeCount > componentCount)
-				return false;
-
 			var includeHashCodes = Query.GetIncludeHashCodes(query);
 			var excludeHashCodes = Query.GetExcludeHashCodes(query);
+			var hashCodes        = Archetype.GetComponentHashCodes(archetype);
 
-			for(int i = 0, j = 0; i < query->includeCount; ++i)
+			return Matches(includeHashCodes, query->includeCount, excludeHashCodes,
+				query->excludeCount, hashCodes, archetype->componentCount);
+		}
+
+		public static bool Matches(uint* includeHashCodes, int includeCount,
+			uint* excludeHashCodes, int excludeCount, uint* hashCodes, int count)
+		{
+			if(includeCount > count)
+				return false;
+
+			for(int i = 0, j = 0; i < includeCount; ++i)
 			{
-				while(includeHashCodes[i] > componentHashCodes[j] && j < componentCount)
+				while(includeHashCodes[i] > hashCodes[j] && j < count)
 					++j;
 				
-				if(includeHashCodes[i] != componentHashCodes[j])
+				if(includeHashCodes[i] != hashCodes[j])
 					return false;
 			}
 
-			for(int i = 0, j = 0; i < query->excludeCount; ++i)
+			for(int i = 0, j = 0; i < excludeCount; ++i)
 			{
-				while(excludeHashCodes[i] > componentHashCodes[j] && j < componentCount)
+				while(excludeHashCodes[i] > hashCodes[j] && j < count)
 					++j;
 				
-				if(excludeHashCodes[i] == componentHashCodes[j])
+				if(excludeHashCodes[i] == hashCodes[j])
 					return false;
 			}
 
