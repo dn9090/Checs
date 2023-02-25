@@ -47,7 +47,7 @@ manager.CreateEntity(archetype, temp);
 
 > How to I destroy an entity?
 
-Destroy an single entity with:
+Destroy a single entity with:
 ```CSharp
 var entity = manager.CreateEntity();
 
@@ -67,7 +67,6 @@ To check if a single entity exists use:
 ```CSharp
 bool exists = manager.Exists(entity);
 ```
-
 
 > How do I create an archetype?
 
@@ -109,14 +108,14 @@ var entities = new Entity[count];
 manager.GetEntities(archetype, entities);
 ```
 
-> How do I get the value of an component?
+> How do I get the value of a component?
 
-The simplest variant is to simply get the value without checking if the
+The first variant is to simply get the value without checking if the
 entity has the component (in this case the returned value is the default value):
 ```CSharp
 var position = manager.GetComponentData<Position>(entity);
 ```
-To also check if the entity has the component use:
+To check if the entity has the component use:
 ```CSharp
 if(manager.TryGetComponent(entity, out Position position))
 {
@@ -124,7 +123,7 @@ if(manager.TryGetComponent(entity, out Position position))
 }
 ```
 
-> How do I set the value of an component?
+> How do I set the value of a component?
 
 Just pass in the value:
 ```CSharp
@@ -133,6 +132,13 @@ bool success = manager.SetComponentData(entity, in position);
 
 // Short-hand
 manager.SetComponentData(entity, new Rotation(4f, 3f, 2f, 1f)); 
+```
+
+> How do I check if the entity has a component?
+
+To check if an entity has a component use:
+```CSharp
+bool hasComponent = manager.HasComponentData<Position>(entity);
 ```
 
 > How do I get all entities with a specific set of components?
@@ -270,6 +276,25 @@ var prefab = manager.ToPrefab(entity);
 if(prefab != null)
 {
 	prefab.SetComponentData<Position>(new Position(1f, 2f, 3f));
+	// ...
+}
+```
+
+> How do I know if instantiating/getting a single entity was successful?
+
+Because the entity is a structure and not a class an entity cannot be null.
+However, to be able to offer simple interfaces without further out-parameters, the **null entity** was introduced.
+The **null entity** has the same value as `default(Entity)` and `Entity.isNull` evaluates to `true`:
+```CSharp
+var entity = manager.Instantiate(other);
+
+if(!entity.isNull)
+{
+	// ...
+}
+
+if(entity != default)
+{
 	// ...
 }
 ```

@@ -31,7 +31,7 @@ namespace Checs
 			lhs.index == rhs.index && lhs.version == rhs.version;
 		
 		public static bool operator !=(Entity lhs, Entity rhs) =>
-			lhs.index != rhs.index && lhs.version != rhs.version;
+			lhs.index != rhs.index || lhs.version != rhs.version;
 
 		public int CompareTo(Entity other) => this.index - other.index;
 
