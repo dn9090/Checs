@@ -44,12 +44,12 @@ namespace EcsBenchmark
 		internal void WriteHeader(StreamWriter writer)
 		{
 			writer.WriteLine("# The super inofficial .NET ECS benchmark");
-			writer.Write("This projects compares different ECS frameworks in various benchmarks. ");
-			writer.Write("The goal is to get a quick overview of the performance of the ECS frameworks in selected situations.");
+			writer.Write("This projects compares different ECS frameworks and data structures in various benchmarks. ");
+			writer.Write("The goal is to get a quick overview of the performance of ECS designs in selected situations.");
 			writer.WriteLine();
 			writer.WriteLine();
 
-			writer.Write("> Note that the benchmarks try to achieve the best possible execution time for the frameworks. ");
+			writer.Write("> Note that the benchmarks try to achieve the best possible execution time. ");
 			writer.Write("However, APIs may change or other APIs may be better suited for the benchmark. ");
 			writer.Write("In such cases, please contact the author.");
 			writer.WriteLine();
@@ -60,7 +60,10 @@ namespace EcsBenchmark
 		{
 			writer.WriteLine("## Contributing");
 			writer.WriteLine("### Adding a framework");
-			writer.WriteLine("...");
+			writer.WriteLine("To add a framework to existing tests, copy the test and replace the setup, execution and cleanup methods. ");
+			writer.WriteLine("If the framework is new, also add an entry to the `Categories` class. ");
+			writer.WriteLine("The name of the execution method should match the name of the framework/category.");
+			
 			writer.WriteLine("### Create a new benchmark");
 			writer.WriteLine("...");
 		}
