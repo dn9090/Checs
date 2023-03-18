@@ -80,7 +80,7 @@ namespace Checs
 			Unsafe.CopyBlockUnaligned(sizes, componentSizes, (uint)byteCount);
 			Unsafe.InitBlockUnaligned(versions, 0, (uint)byteCount);
 
-			ArchetypeUtility.CalculateComponentOffsets(sizes, offsets, componentCount, chunkCapacity);
+			ChunkUtility.CalculateOffsets(sizes, offsets, componentCount, chunkCapacity);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]

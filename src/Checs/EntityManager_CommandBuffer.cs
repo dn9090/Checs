@@ -11,132 +11,79 @@ namespace Checs
 			return new EntityCommandBuffer(this);
 		}
 
-		public void Playback(EntityCommandBuffer buffer)
+		public void Playback(EntityCommandBuffer buffer, bool clear = true)
 		{
 			if(buffer.manager != this)
-				throw new ArgumentException("The command buffer does not belong to the manager"); // TODO: Better name.
+				throw new ArgumentException("The command buffer does not belong to the manager."); // TODO: Better name.
 			
 			buffer.CheckDisposed();
 
-			PlaybackInternal(buffer.head);
+			var playback = new CommandPlayback(buffer.head);
 
-			var next          = buffer.head->next;
-			buffer.head->next = null;
-
-			while(next != null)
+			while(playback.chunk != null)
 			{
-				var chunk = next;
-				PlaybackInternal(chunk);
-
-				next        = chunk->next;
-				chunk->next = null;
-
-				// Releasing the chunk directly so that if the playback of the next chunk takes
-				// longer other threads can reuse the chunk earlier.
-				// Also avoids repeated interlocking operations.
-				this.chunkStore.Release((Chunk*)chunk);
+				PlaybackInternal(&playback);
+				playback.chunk = playback.chunk->next;
 			}
 
-			buffer.Clear();
+			if(clear)
+				buffer.Clear();
 		}
 
-		internal void PlaybackInternal(CommandChunk* chunk)
+		internal void PlaybackInternal(CommandPlayback* playback)
 		{
-			var count = chunk->commandCount;
-			var offset = new CommandOffset(chunk);
+			var at    = playback->chunk->buffer;
+			var count = playback->chunk->commandCount;
 
 			while(count-- > 0)
 			{
-				var header = offset.header;
-
+				var header = (CommandHeader*)at;
+				at        += header->byteCount;
+				
 				switch(header->type)
 				{
 					case CommandType.CreateEntity:
 					{
 						var command = (CreateEntityCommand*)header;
-						// TODO: Peek withcomponentdata
 						CreateEntity(command->archetype, command->count);
-						break;
-					}
-					case CommandType.DestroyEntity:
+					} break;
+					case CommandType.DestroyEntity | CommandType.Entity:
 					{
-						var command = (DestroyEntityCommand*)header;
-						var peekOffset = offset;
-
-						while(TryPeekNextCommand(CommandType.Entity, ref peekOffset))
-						{
-							var entityCommand = (EntityCommand*)peekOffset.header;
-							var entityBuffer  = CommandUtility.AsSpan(entityCommand);
-							DestroyEntity(entityBuffer);
-						}
-
-						break;
-					}
+						var command  = (EntityCommand*)header;
+						var entities = EntityCommandBuffer.GetEntities(command);
+						DestroyEntity(entities);
+					} break;
 					case CommandType.DestroyArchetype:
 					{
 						var command = (DestroyArchetypeCommand*)header;
 						DestroyEntity(command->archetype);
-						break;
-					}
+					} break;
 					case CommandType.DestroyQuery:
 					{
 						var command = (DestroyQueryCommand*)header;
 						DestroyEntity(command->query);
-						break;
-					}
-					case CommandType.MoveEntity:
+					} break;
+					case CommandType.MoveEntity | CommandType.Entity:
 					{
-						var command = (MoveEntityCommand*)header;
-						var peekOffset = offset;
-
-						while(TryPeekNextCommand(CommandType.Entity, ref peekOffset))
-						{
-							var entityCommand = (EntityCommand*)peekOffset.header;
-							var entityBuffer  = CommandUtility.AsSpan(entityCommand);
-							MoveEntity(entityBuffer, command->archetype);
-						}
-						break;
-					}
-					case CommandType.Instantiate:
+						var command  = (EntityCommand*)header;
+						var entities = EntityCommandBuffer.GetEntities(command);
+						var prev     = (MoveEntityCommand*)playback->prevCommand;
+						MoveEntity(entities, prev->archetype);
+					} break;
+					case CommandType.InstantiateEntity:
 					{
-						var command = (InstantiateCommand*)header;
+						var command = (InstantiateEntityCommand*)header;
 						Instantiate(command->entity, command->count);
-						break;
-					}
-					case CommandType.SetComponentData:
+					} break;
+					case CommandType.InstantiatePrefab:
 					{
-						var command = (SetComponentDataCommand*)header;
-						var peekOffset = offset;
-
-						while(TryPeekNextCommand(CommandType.Entity, ref peekOffset))
-						{
-							var entityCommand = (EntityCommand*)peekOffset.header;
-							var entityBuffer  = CommandUtility.AsSpan(entityCommand);
-							WriteComponentDataInternal(entityBuffer, (byte*)(command + 1), command->size, command->hashCode);
-						}
-
-						break;
-					};
+						var command = (InstantiatePrefabCommand*)header;
+						Instantiate(command->handle.Target as EntityPrefab); // TODO: Count
+					} break;
 				}
 
-				offset.Move();
-			}
-		}
-
-		internal static bool TryPeekNextCommand(CommandType type, ref CommandOffset offset)
-		{
-			if(offset.TryNext() && offset.header->type == type)
-				return true;
-
-			return false;
-		}
-
-		internal static void WithComponentData(EntityTable table, CommandOffset offset)
-		{
-			while(TryPeekNextCommand(CommandType.WithComponentData, ref offset))
-			{
-				var command = (SetComponentDataCommand*)offset.header;
-				var value = (byte*)(command + 1);
+				if((header->type & CommandType.Entity) == 0)
+					playback->prevCommand = header;
 			}
 		}
 	}

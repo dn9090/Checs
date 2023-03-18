@@ -13,14 +13,14 @@ namespace Checs
 			return xxHash.GetHashCode(hashCodes, count) & 0x7FFFFFFF;
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		/*[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static void CalculateComponentOffsets(int* sizes, int* offsets, int count, int chunkCapacity)
 		{
 			offsets[0] = 0;
 
 			for(int i = 1; i < count; ++i)
 				offsets[i] = offsets[i - 1] + (chunkCapacity * sizes[i - 1]);
-		}
+		}*/
 
 		public static int GetComponentIndex(Archetype* archetype, uint hashCode)
 		{

@@ -155,6 +155,7 @@ namespace Checs
 
 		/// <summary>
 		/// Gets the pointer to all component values of a specific component type.
+		/// The address is aligned to a 16 byte boundary.
 		/// </summary>
 		/// <remarks>
 		/// Does not increment the change version, although modification of the data is possible.

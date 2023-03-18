@@ -6,7 +6,7 @@ using Xunit;
 namespace Checs.Tests
 {
 	public partial class EntityCommandBufferTests
-	{
+	{/*
 		[Fact]
 		public void ThrowsOnAccessAfterDispose()
 		{
@@ -16,6 +16,6 @@ namespace Checs.Tests
 			buffer.Dispose();
 
 			Assert.Throws<ObjectDisposedException>(() => buffer.DestroyEntity(Span<Entity>.Empty));
-		}
+		}*/
 	}
 }

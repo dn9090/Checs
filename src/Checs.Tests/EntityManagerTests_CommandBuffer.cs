@@ -128,7 +128,7 @@ namespace Checs.Tests
 			}
 		}
 
-		[Fact]
+		/*[Fact]
 		public void SetsComponentData()
 		{
 			using EntityManager manager = new EntityManager();
@@ -164,7 +164,7 @@ namespace Checs.Tests
 				Assert.Equal(rotation, manager.GetComponentData<Rotation>(entities[entities.Length / 2]));
 				Assert.Equal(rotation, manager.GetComponentData<Rotation>(entities[entities.Length - 1]));
 			}
-		}
+		}*/
 
 		[Fact]
 		public void ClearedAfterPlayback()

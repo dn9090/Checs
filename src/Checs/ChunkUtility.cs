@@ -15,7 +15,7 @@ namespace Checs
 			chunk->version   = 0;
 		}
 
-		public static int CalculateBufferCapacity(int* sizes, int count)
+		/*public static int CalculateBufferCapacity(int* sizes, int count)
 		{
 			int blockSize = 0;
 
@@ -23,6 +23,66 @@ namespace Checs
 				blockSize += sizes[i];
 
 			return Chunk.BufferSize / blockSize;
+		}*/
+
+		public static int CalculateCapacity(int* sizes, int count)
+		{
+			// Calculate the block size which equals the sum of all sizes
+			// without alignment.
+			var blockSize = 0;
+
+			for(int i = 0; i < count; ++i)
+				blockSize += sizes[i];
+
+			var capacity = Chunk.BufferSize / blockSize;
+			
+			// Reduce the capacity until all aligned component data arrays
+			// fit in the chunk.
+			while(CalculateAlignedSize(sizes, count, capacity) > Chunk.BufferSize)
+				--capacity;
+
+			return capacity;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int Align(int byteCount)
+		{
+			return Allocator.Align16(byteCount);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int AlignComponentArraySize(int size, int elementCount)
+		{
+			return Allocator.Align16(size * elementCount);
+		}
+
+		public static int CalculateAlignedSize(int* sizes, int count, int elementCount)
+		{
+			var size = 0;
+			for(int i = 0; i < count; ++i)
+				size += AlignComponentArraySize(sizes[i], elementCount);
+			return size;
+		}
+
+		/*public static int CalculateAlignedSizeAndOffsets(int* sizes, int* offsets, int count, int elementCount)
+		{
+			var size = 0;
+			for(int i = 0; i < count; ++i)
+			{
+				offsets[i] = size;
+				size      += AlignComponentArraySize(sizes[i], elementCount);
+			}
+				
+			return size;
+		}*/
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static void CalculateOffsets(int* sizes, int* offsets, int count, int chunkCapacity)
+		{
+			offsets[0] = 0;
+
+			for(int i = 1; i < count; ++i)
+				offsets[i] = offsets[i - 1] + AlignComponentArraySize(sizes[i - 1], chunkCapacity);
 		}
 
 		public static void ZeroComponentData(Chunk* chunk, int index, int count)

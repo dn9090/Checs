@@ -243,5 +243,38 @@ namespace Checs.Tests
 				Assert.Equal(entities.Length / 2, count);
 			}
 		}
+
+		[Fact]
+		public void Aligned()
+		{
+			const int Alignment = 16;
+
+			using EntityManager manager = new EntityManager();
+
+			{
+				var archetype = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>(),
+					ComponentType.Of<Velocity>(),
+					ComponentType.Of<Health>(),
+				});
+				manager.CreateEntity(archetype);
+
+				using var it = manager.GetIterator(archetype);
+
+				while(it.TryNext(out var table))
+				{
+					var positions  = table.GetComponentDataPtr<Position>();
+					var rotations  = table.GetComponentDataPtr<Rotation>();
+					var velocities = table.GetComponentDataPtr<Velocity>();
+					var healths    = table.GetComponentDataPtr<Health>();
+
+					Assert.Equal(0, positions.ToInt64()  % Alignment);
+					Assert.Equal(0, rotations.ToInt64()  % Alignment);
+					Assert.Equal(0, velocities.ToInt64() % Alignment);
+					Assert.Equal(0, healths.ToInt64()    % Alignment);
+				}
+			}
+		}
 	}
 }

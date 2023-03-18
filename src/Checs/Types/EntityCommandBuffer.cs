@@ -9,16 +9,15 @@ namespace Checs
 	[Flags]
 	internal enum CommandType : int
 	{
-		None,
-		Entity,
-		CreateEntity,
-		DestroyEntity,
-		DestroyArchetype,
-		DestroyQuery,
-		MoveEntity,
-		Instantiate,
-		WithComponentData,
-		SetComponentData
+		None              = 0,
+		Entity            = 1 << 0,
+		CreateEntity      = 1 << 1,
+		DestroyEntity     = 1 << 2,
+		DestroyArchetype  = 1 << 3,
+		DestroyQuery      = 1 << 4,
+		MoveEntity        = 1 << 5,
+		InstantiateEntity = 1 << 6,
+		InstantiatePrefab = 1 << 7,
 	}
 
 	[StructLayout(LayoutKind.Sequential)]
@@ -29,7 +28,7 @@ namespace Checs
 		public int byteCount;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Size = 16)]
+	[StructLayout(LayoutKind.Sequential)]
 	internal struct EntityCommand
 	{
 		public CommandHeader header;
@@ -78,7 +77,7 @@ namespace Checs
 	}
 
 	[StructLayout(LayoutKind.Sequential)]
-	internal struct InstantiateCommand
+	internal struct InstantiateEntityCommand
 	{
 		public CommandHeader header;
 
@@ -87,14 +86,14 @@ namespace Checs
 		public int count;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Size = 16)]
-	internal struct SetComponentDataCommand
+	[StructLayout(LayoutKind.Sequential)]
+	internal struct InstantiatePrefabCommand
 	{
 		public CommandHeader header;
 
-		public uint hashCode;
+		public GCHandle handle;
 
-		public int size;
+		public int count;
 	}
 
 	[StructLayout(LayoutKind.Explicit)]
@@ -127,42 +126,32 @@ namespace Checs
 		public int capacity => Chunk.BufferSize - used;
 	}
 
-	internal unsafe struct CommandOffset
+	internal unsafe struct CommandPlayback
 	{
 		public CommandChunk* chunk;
 
-		public int offset;
-		
-		public CommandHeader* header => (CommandHeader*)(chunk->buffer + offset);
+		public CommandHeader* prevCommand;
 
-		public CommandOffset(CommandChunk* chunk)
+		public CommandPlayback(CommandChunk* chunk)
 		{
 			this.chunk = chunk;
-			this.offset = 0;
-		}
-
-		public void Move()
-		{
-			this.offset += header->byteCount;
-		}
-
-		public bool TryNext()
-		{
-			Move();
-
-			if(offset < Chunk.BufferSize)
-				return true;
-
-			if(chunk->next == null)
-				return false;
-			
-			chunk = chunk->next;
-			offset = 0;
-
-			return true;
+			this.prevCommand = null;
 		}
 	}
-
+	
+	// +--------------+
+	// | CHUNK HEADER |
+	// |--------------|
+	// |   COMMAND    |  |
+	// |--------------|  |
+	// |   COMMAND    |  v
+	// |--------------|
+	// |     ...      |
+	// |--------------|
+	// |   GCHANDLE   |  ^
+	// |--------------|  |
+	// |   GCHANDLE   |  |
+	// +--------------+
 
 	public struct EntityCommandBuffer : IDisposable
 	{
@@ -187,11 +176,58 @@ namespace Checs
 		internal unsafe EntityCommandBuffer(EntityManager manager)
 		{
 			this.manager        = manager;
-			this.head           = (CommandChunk*)this.manager.chunkStore.Aquire();
-			this.head->current  = this.head;
+			this.head           = (CommandChunk*)manager.chunkStore.Aquire();
+			this.head->current  = head;
 			this.sequenceNumber = this.head->sequenceNumber;
 
 			ConstructChunk(this.head);
+		}
+
+		public void Clear()
+		{
+			CheckDisposed();
+
+			unsafe
+			{
+				var next = this.head->next;
+
+				while(next != null)
+				{
+					var chunk = next;
+					next = chunk->next;
+
+					this.manager.chunkStore.Release((Chunk*)chunk);
+				}
+
+				ConstructChunk(this.head);
+				this.head->current = this.head;
+			}
+		}
+
+		public void Dispose()
+		{
+			unsafe
+			{
+				if(this.head != null && this.sequenceNumber == this.head->sequenceNumber)
+				{
+					var next = this.head;
+
+					while(next != null)
+					{
+						var chunk = next;
+						next = chunk->next;
+
+						this.manager.chunkStore.Release((Chunk*)chunk);
+					}
+				}
+
+				this.head = null;
+			}
+		}
+
+		public void CreateEntity(int count = 1)
+		{
+			CreateEntity(EntityArchetype.empty, count);
 		}
 
 		public void CreateEntity(EntityArchetype archetype, int count = 1)
@@ -200,7 +236,7 @@ namespace Checs
 
 			unsafe
 			{
-				var chunk = this.head->current;
+				var chunk       = this.head->current;
 				var prevCommand = (CreateEntityCommand*)chunk->prevCommand;
 
 				if(prevCommand->header.type != CommandType.CreateEntity
@@ -222,11 +258,8 @@ namespace Checs
 
 			unsafe
 			{
-				var chunk = this.head->current;
-
-				var command = (DestroyEntityCommand*)Bump(CommandType.DestroyEntity, sizeof(DestroyEntityCommand));
-
-				AppendEntities(entities);
+				Bump(CommandType.DestroyEntity, sizeof(DestroyEntityCommand));
+				AppendEntities(CommandType.DestroyEntity, entities);
 			}
 		}
 
@@ -266,18 +299,24 @@ namespace Checs
 			}
 		}
 
+		public void MoveEntity(Entity entity, EntityArchetype archetype)
+		{
+			unsafe
+			{
+				MoveEntity(new ReadOnlySpan<Entity>(&entity, 1), archetype);
+			}
+		}
+
 		public void MoveEntity(ReadOnlySpan<Entity> entities, EntityArchetype archetype)
 		{
 			CheckDisposed();
 
 			unsafe
 			{
-				var chunk = this.head->current;
-
 				var command = (MoveEntityCommand*)Bump(CommandType.MoveEntity, sizeof(MoveEntityCommand));
 				command->archetype = archetype;
 
-				AppendEntities(entities);
+				AppendEntities(CommandType.MoveEntity, entities);
 			}
 		}
 
@@ -288,182 +327,127 @@ namespace Checs
 			unsafe
 			{
 				var chunk = this.head->current;
-				var prevCommand = (InstantiateCommand*)chunk->prevCommand;
+				var prevCommand = (InstantiateEntityCommand*)chunk->prevCommand;
 
-				if(prevCommand->header.type == CommandType.Instantiate
+				if(prevCommand->header.type == CommandType.InstantiateEntity
 					&& prevCommand->entity == entity)
 				{
 					prevCommand->count += count;
 					return;
 				}
 
-				var command = (InstantiateCommand*)Bump(CommandType.Instantiate, sizeof(InstantiateCommand));
+				var command = (InstantiateEntityCommand*)Bump(CommandType.InstantiateEntity, sizeof(InstantiateEntityCommand));
 				command->entity = entity;
 				command->count  = count;
 			}
 		}
-	
-		public void SetComponentData<T>(in T value) where T : unmanaged
+
+		public void Instantiate(EntityPrefab prefab, int count = 1)
 		{
 			CheckDisposed();
-
-			var typeInfo = TypeRegistry<T>.info;
 
 			unsafe
 			{
 				var chunk = this.head->current;
+				var prevCommand = (InstantiatePrefabCommand*)chunk->prevCommand;
 
-				var command = (SetComponentDataCommand*)Bump(CommandType.WithComponentData,
-					sizeof(SetComponentDataCommand) + sizeof(T));
-				command->hashCode = typeInfo.hashCode;
-				command->size     = sizeof(T);
-
-				Unsafe.Write(command + 1, value);
-			}
-		}
-
-		public void SetComponentData<T>(ReadOnlySpan<Entity> entities, in T value) where T : unmanaged
-		{
-			CheckDisposed();
-
-			var typeInfo = TypeRegistry<T>.info;
-
-			unsafe
-			{
-				var chunk = this.head->current;
-
-				var command = (SetComponentDataCommand*)Bump(CommandType.SetComponentData,
-					sizeof(SetComponentDataCommand) + sizeof(T));
-				command->hashCode = typeInfo.hashCode;
-				command->size     = sizeof(T);
-
-				Unsafe.Write(command + 1, value);
-				
-				AppendEntities(entities);
-			}
-		}
-
-		public void Clear()
-		{
-			CheckDisposed();
-
-			unsafe
-			{
-				var next = this.head->next;
-
-				while(next != null)
+				if(prevCommand->header.type == CommandType.InstantiatePrefab
+					&& prevCommand->handle.Target == prefab)
 				{
-					var chunk = next;
-					next = chunk->next;
-
-					this.manager.chunkStore.Release((Chunk*)chunk);
+					prevCommand->count += count;
+					return;
 				}
 
-				ConstructChunk(this.head);
+				var command = (InstantiatePrefabCommand*)Bump(CommandType.InstantiatePrefab, sizeof(InstantiatePrefabCommand));
+				command->handle = GCHandle.Alloc(prefab);
+				command->count  = count;
 			}
 		}
 
-		public void Dispose()
+		internal unsafe void AppendEntities(CommandType type, ReadOnlySpan<Entity> entities)
 		{
-			unsafe
+			var count = 0;
+
+			while(count < entities.Length)
 			{
-				if(this.head != null && this.sequenceNumber == this.head->sequenceNumber)
-				{
-					var next = this.head;
+				var remaining = entities.Length - count;
+				var command   = (EntityCommand*)Bump(type | CommandType.Entity, sizeof(EntityCommand),
+						sizeof(Entity), remaining, out var reservedCount);
+				var slice     = entities.Slice(count, reservedCount);
 
-					while(next != null)
-					{
-						var chunk = next;
-						next = chunk->next;
+				command->count = reservedCount;
+				count         += reservedCount;
 
-						this.manager.chunkStore.Release((Chunk*)chunk);
-					}
-				}
+				slice.CopyTo(GetEntities(command));
 			}
 		}
 
-		internal unsafe void AppendEntities(ReadOnlySpan<Entity> entities)
+		internal static unsafe Span<Entity> GetEntities(EntityCommand* command)
 		{
-			fixed(Entity* ptr = entities)
-			{
-				var src = ptr;
-				var absoluteByteCount = entities.Length * sizeof(Entity);
+			var buffer = (byte*)command + ChunkUtility.Align(sizeof(EntityCommand));
+			return new Span<Entity>(buffer, command->count);
+		}
+
+		internal unsafe CommandHeader* Bump(CommandType type, int commandSize)
+		{
+			var byteCount = ChunkUtility.Align(commandSize);
+
+			EnsureCapacity(byteCount);
+
+			var chunk  = this.head->current;
+
+			++this.head->absoluteCommandCount;
+
+			return Bump(chunk, type, byteCount);
+		}
+
+		internal unsafe CommandHeader* Bump(CommandType type, int commandSize, int elementSize, int elementCount, out int reservedCount)
+		{
+			var byteCount    = ChunkUtility.Align(commandSize);
+			var minByteCount = byteCount + ChunkUtility.Align(elementSize); // At least one element is guaranteed to be reserved.
+
+			EnsureCapacity(minByteCount);
+
+			var chunk  = this.head->current;
+
+			++this.head->absoluteCommandCount;
+
+			var remainingCapacity = chunk->capacity - byteCount;
+			var maxElementCount   = remainingCapacity / elementSize;
 			
-				while(absoluteByteCount > 0)
-				{
-					var command   = (EntityCommand*)Bump(CommandType.Entity, sizeof(EntityCommand),
-						sizeof(Entity), absoluteByteCount, out var reservedByteCount);
-					var count     = reservedByteCount / sizeof(Entity);
-					var byteCount = count * sizeof(Entity);
-
-					command->count = count;
-					Unsafe.CopyBlockUnaligned(command + 1, src, (uint)byteCount);
-
-					src += count;
-					absoluteByteCount -= byteCount;
-				}
-			}
+			reservedCount = maxElementCount > elementCount ? elementCount : maxElementCount;
+			
+			return Bump(chunk, type, byteCount + ChunkUtility.AlignComponentArraySize(elementSize, reservedCount));
 		}
 
-		internal unsafe CommandHeader* Bump(CommandType type, int byteCount)
+		internal static unsafe CommandHeader* Bump(CommandChunk* chunk, CommandType type, int byteCount)
 		{
-			var alignedByteCount = Allocator.Align16(byteCount);
-			var capacity = this.head->current->capacity;
-
-			if(capacity < alignedByteCount)
-				AquireNextChunk();
-
-			++this.head->absoluteCommandCount;
-
-			var chunk = this.head->current;
 			var header = (CommandHeader*)(chunk->buffer + chunk->used);
-
+			
 			header->type      = type;
-			header->byteCount = alignedByteCount;
+			header->byteCount = byteCount;
 
-			chunk->used         += alignedByteCount;
+			chunk->used         += byteCount;
 			chunk->commandCount += 1;
 			chunk->prevCommand   = header;
 
 			return header;
 		}
 
-		internal unsafe CommandHeader* Bump(CommandType type, int byteCount,
-			int minByteCount, int maxByteCount, out int reservedByteCount)
+		internal unsafe void EnsureCapacity(int byteCount)
 		{
-			var alignedByteCount = Allocator.Align16(byteCount);
-			var capacity = this.head->current->capacity;
+			if(byteCount > Chunk.BufferSize)
+				throw new InvalidOperationException();
 
-			if(capacity < (alignedByteCount + minByteCount))
-				AquireNextChunk();
+			if(this.head->current->capacity < byteCount)
+			{
+				var chunk = (CommandChunk*)this.manager.chunkStore.Aquire();
 
-			++this.head->absoluteCommandCount;
+				this.head->current->next = chunk;
+				this.head->current       = chunk;
 
-			var chunk            = this.head->current;
-			var header           = (CommandHeader*)(chunk->buffer + chunk->used);
-			var reservedCapacity = chunk->capacity - alignedByteCount;
-
-			reservedByteCount = reservedCapacity < maxByteCount ? reservedCapacity : maxByteCount;
-			var alignedReservedByteCount = Allocator.Align16(reservedByteCount);
-
-			header->type      = type;
-			header->byteCount = alignedByteCount + alignedReservedByteCount;
-
-			chunk->used         += alignedByteCount + alignedReservedByteCount;
-			chunk->commandCount += 1;
-			chunk->prevCommand   = header;
-
-			return header;
-		}
-
-		internal unsafe void AquireNextChunk()
-		{
-			var next = (CommandChunk*)this.manager.chunkStore.Aquire();
-
-			this.head->current->next = next;
-			this.head->current = next;
-
-			ConstructChunk(next);
+				ConstructChunk(chunk);
+			}
 		}
 
 		internal unsafe void CheckDisposed()
@@ -482,28 +466,4 @@ namespace Checs
 			chunk->prevCommand->type    = CommandType.None;
 		}
 	}
-
-	internal static unsafe class CommandUtility
-	{
-		public static Span<Entity> AsSpan(EntityCommand* command)
-		{
-			return new Span<Entity>(command + 1, command->count);
-		}
-	}
 }
-
-/*
-
-1. Alloc command
-2. Alloc command + alloc fixed value
-3. Alloc command + alloc array
-   a) alloc command
-   b) alloc entity command + alloc array
-   c) -> alloc entity command + alloc array ->
-
-Bump(command size)
-Bump(command size, payload size)
-BumpArray(command size, element size, out int elementCount)
-
-
-*/

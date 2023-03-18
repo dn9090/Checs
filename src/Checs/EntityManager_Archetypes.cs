@@ -103,7 +103,7 @@ namespace Checs
 			if(this.lookupTable.TryGet(hashCode, out var index))
 				return new EntityArchetype(index);
 
-			var chunkCapacity = ChunkUtility.CalculateBufferCapacity(sizes, count);
+			var chunkCapacity = ChunkUtility.CalculateCapacity(sizes, count);
 			var bufferSize    = Archetype.SizeOfBuffer(count);
 
 			if(chunkCapacity == 0)
