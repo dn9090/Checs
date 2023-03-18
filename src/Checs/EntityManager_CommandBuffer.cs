@@ -80,6 +80,14 @@ namespace Checs
 						var command = (InstantiatePrefabCommand*)header;
 						Instantiate(command->handle.Target as EntityPrefab); // TODO: Count
 					} break;
+					case CommandType.SetComponentData | CommandType.Entity:
+					{
+						var command  = (EntityCommand*)header;
+						var entities = EntityCommandBuffer.GetEntities(command);
+						var prev     = (SetComponentDataCommand*)playback->prevCommand;
+						var buffer   = EntityCommandBuffer.GetBuffer(prev, sizeof(SetComponentDataCommand));
+						WriteComponentDataInternal(entities, buffer, prev->size, prev->hashCode);
+					} break;
 				}
 
 				if((header->type & CommandType.Entity) == 0)

@@ -18,6 +18,7 @@ namespace Checs
 		MoveEntity        = 1 << 5,
 		InstantiateEntity = 1 << 6,
 		InstantiatePrefab = 1 << 7,
+		SetComponentData  = 1 << 8,
 	}
 
 	[StructLayout(LayoutKind.Sequential)]
@@ -96,6 +97,16 @@ namespace Checs
 		public int count;
 	}
 
+	[StructLayout(LayoutKind.Sequential)]
+	internal struct SetComponentDataCommand
+	{
+		public CommandHeader header;
+
+		public uint hashCode;
+
+		public int size;
+	}
+
 	[StructLayout(LayoutKind.Explicit)]
 	internal unsafe struct CommandChunk
 	{
@@ -106,6 +117,9 @@ namespace Checs
 		public int commandCount;
 
 		[FieldOffset(8)]
+		public int handleCount;
+
+		[FieldOffset(12)]
 		public int absoluteCommandCount;
 
 		[FieldOffset(16)]
@@ -217,11 +231,10 @@ namespace Checs
 						var chunk = next;
 						next = chunk->next;
 
+						// Releasing increments the sequence number of the head chunk.
 						this.manager.chunkStore.Release((Chunk*)chunk);
 					}
 				}
-
-				this.head = null;
 			}
 		}
 
@@ -239,8 +252,8 @@ namespace Checs
 				var chunk       = this.head->current;
 				var prevCommand = (CreateEntityCommand*)chunk->prevCommand;
 
-				if(prevCommand->header.type != CommandType.CreateEntity
-					|| prevCommand->archetype != archetype)
+				if(prevCommand->header.type == CommandType.CreateEntity
+					&& prevCommand->archetype == archetype)
 				{
 					prevCommand->count += count;
 					return;
@@ -359,8 +372,35 @@ namespace Checs
 				}
 
 				var command = (InstantiatePrefabCommand*)Bump(CommandType.InstantiatePrefab, sizeof(InstantiatePrefabCommand));
-				command->handle = GCHandle.Alloc(prefab);
+				command->handle = Bump(prefab);
 				command->count  = count;
+			}
+		}
+
+		public void SetComponentData<T>(Entity entity, in T value) where T : unmanaged
+		{
+			unsafe
+			{
+				SetComponentData(new ReadOnlySpan<Entity>(&entity, 1), in value);
+			}
+		}
+
+		public void SetComponentData<T>(ReadOnlySpan<Entity> entities, in T value) where T : unmanaged
+		{
+			CheckDisposed();
+
+			unsafe
+			{
+				var typeInfo = TypeRegistry<T>.info;
+				var command = (SetComponentDataCommand*)Bump(CommandType.SetComponentData,
+					sizeof(SetComponentDataCommand), typeInfo.size, 1, out _);
+				command->hashCode = typeInfo.hashCode;
+				command->size     = typeInfo.size;
+
+				var buffer = GetBuffer(command, sizeof(SetComponentDataCommand));
+				Unsafe.WriteUnaligned(buffer, value);
+
+				AppendEntities(CommandType.SetComponentData, entities);
 			}
 		}
 
@@ -386,6 +426,11 @@ namespace Checs
 		{
 			var buffer = (byte*)command + ChunkUtility.Align(sizeof(EntityCommand));
 			return new Span<Entity>(buffer, command->count);
+		}
+
+		internal static unsafe byte* GetBuffer(void* command, int commandSize)
+		{
+			return (byte*)command + ChunkUtility.Align(commandSize);
 		}
 
 		internal unsafe CommandHeader* Bump(CommandType type, int commandSize)
@@ -432,6 +477,11 @@ namespace Checs
 			chunk->prevCommand   = header;
 
 			return header;
+		}
+
+		internal unsafe GCHandle Bump(object target)
+		{
+			throw new InvalidOperationException(); // TODO
 		}
 
 		internal unsafe void EnsureCapacity(int byteCount)

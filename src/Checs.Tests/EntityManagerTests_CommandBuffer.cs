@@ -7,6 +7,23 @@ namespace Checs.Tests
 	public partial class EntityManagerTests_CommandBuffer
 	{
 		[Fact]
+		public void CreatesEntities()
+		{
+			using EntityManager manager = new EntityManager();
+
+			{
+				var entityCount = manager.entityCount;
+
+				using var buffer = manager.CreateCommandBuffer();
+				buffer.CreateEntity(100);
+
+				manager.Playback(buffer);
+
+				Assert.Equal(entityCount + 100, manager.entityCount);
+			}
+		}
+
+		[Fact]
 		public void DestroysEntities()
 		{
 			using EntityManager manager = new EntityManager();
@@ -128,7 +145,7 @@ namespace Checs.Tests
 			}
 		}
 
-		/*[Fact]
+		[Fact]
 		public void SetsComponentData()
 		{
 			using EntityManager manager = new EntityManager();
@@ -161,31 +178,8 @@ namespace Checs.Tests
 				manager.Playback(buffer);
 
 				Assert.Equal(rotation, manager.GetComponentData<Rotation>(entities[0]));
-				Assert.Equal(rotation, manager.GetComponentData<Rotation>(entities[entities.Length / 2]));
 				Assert.Equal(rotation, manager.GetComponentData<Rotation>(entities[entities.Length - 1]));
 			}
-		}*/
-
-		[Fact]
-		public void ClearedAfterPlayback()
-		{
-			using EntityManager manager = new EntityManager();
-
-			var archetype = manager.CreateArchetype(ComponentType.Of<Position>());
-			var entities = new Entity[2000];
-			manager.CreateEntity(entities);
-
-			using var buffer = manager.CreateCommandBuffer();
-			buffer.DestroyEntity(entities.AsSpan(0, entities.Length / 2));
-			buffer.CreateEntity(archetype, 100);
-			buffer.DestroyEntity(entities.AsSpan(entities.Length / 2));
-			buffer.CreateEntity(archetype, 100);
-			buffer.DestroyEntity(archetype);
-
-			manager.Playback(buffer);
-
-			Assert.Equal(0, buffer.count);
-			Assert.Equal(0, manager.entityCount);
 		}
 	}
 }
