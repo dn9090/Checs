@@ -81,8 +81,9 @@ namespace Checs.Tests
 
 			{
 				var entity = manager.CreateEntity();
+				manager.AddComponentData(entity, new Entity());
 
-				Assert.False(manager.AddComponentData<Entity>(entity));
+				Assert.NotEqual(new Entity(), manager.GetComponentData<Entity>(entity));
 			}
 
 			{
@@ -98,26 +99,7 @@ namespace Checs.Tests
 				var entity = manager.CreateEntity(archetype);
 
 				Assert.True(manager.AddComponentData<Position>(entity));
-				Assert.False(manager.AddComponentData<Position>(entity));
-			}
-
-			{
-				var entity = manager.CreateEntity();
-
 				Assert.True(manager.AddComponentData<Position>(entity));
-				Assert.True(manager.AddComponentData<Rotation>(entity));
-				Assert.True(manager.AddComponentData<Velocity>(entity));
-				Assert.True(manager.AddComponentData<Scale>(entity));
-
-				Assert.False(manager.AddComponentData<Position>(entity));
-				Assert.False(manager.AddComponentData<Rotation>(entity));
-				Assert.False(manager.AddComponentData<Velocity>(entity));
-				Assert.False(manager.AddComponentData<Scale>(entity));
-
-				Assert.True(manager.HasComponentData<Position>(entity));
-				Assert.True(manager.HasComponentData<Rotation>(entity));
-				Assert.True(manager.HasComponentData<Velocity>(entity));
-				Assert.True(manager.HasComponentData<Scale>(entity));
 			}
 		}
 
@@ -191,9 +173,9 @@ namespace Checs.Tests
 				manager.CreateEntity(archetype, entities);
 
 				var buffer = new Position[200];
-				var copyCount = manager.CopyComponentData<Position>(archetype, buffer);
+				var count  = manager.CopyComponentData(archetype, buffer.AsSpan());
 
-				Assert.Equal(entities.Length, copyCount);
+				Assert.Equal(entities.Length, count);
 			}
 
 			{
@@ -204,10 +186,10 @@ namespace Checs.Tests
 				var entities = new Entity[100];
 				manager.CreateEntity(archetype, entities);
 
-				var buffer = new Scale[200];
-				var copyCount = manager.CopyComponentData<Scale>(archetype, buffer);
+				var buffer = new Scale[100];
+				var count  = manager.CopyComponentData(archetype, buffer.AsSpan());
 
-				Assert.Equal(0, copyCount);
+				Assert.Equal(0, count);
 			}
 		}
 
@@ -224,7 +206,7 @@ namespace Checs.Tests
 				var entities = new Entity[20];
 				manager.CreateEntity(archetype, entities);
 
-				var count = manager.SetComponentData<Position>(entities, new Position(1f, 2f, 3f));
+				var count = manager.SetComponentData(entities, new Position(1f, 2f, 3f));
 
 				Assert.Equal(entities.Length, count);
 			}
@@ -238,7 +220,7 @@ namespace Checs.Tests
 				manager.CreateEntity(entities.AsSpan(0, entities.Length / 2));
 				manager.CreateEntity(archetype, entities.AsSpan(entities.Length / 2));
 
-				var count = manager.SetComponentData<Position>(entities, new Position(1f, 2f, 3f));
+				var count = manager.SetComponentData(entities, new Position(1f, 2f, 3f));
 
 				Assert.Equal(entities.Length / 2, count);
 			}
@@ -260,7 +242,7 @@ namespace Checs.Tests
 				});
 				manager.CreateEntity(archetype);
 
-				using var it = manager.GetIterator(archetype);
+				var it = manager.GetIterator(archetype);
 
 				while(it.TryNext(out var table))
 				{

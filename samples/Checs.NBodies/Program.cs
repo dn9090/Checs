@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using SFML.Graphics;
 using SFML.Window;
 using SFML.System;
@@ -21,7 +22,8 @@ namespace Checs.NBodies
 				new PhysicsSystem(),
 				new ColorSystem(),
 				new CameraSystem(window, view),
-				new RenderingSystem(window)
+				new RenderingSystem(window),
+				new RestoreSystem()
 			};
 
 			for(int i = 0; i < systems.Length; ++i)

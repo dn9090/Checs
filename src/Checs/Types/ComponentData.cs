@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace Checs
 {
-	public struct ComponentDataLookup<T> where T : unmanaged // Rename to ComponentData<T> ?
+	public struct ComponentData<T> where T : unmanaged
 	{
 		public T this[Entity entity]
 		{
@@ -18,10 +18,10 @@ namespace Checs
 
 		internal int cachedIndex;
 
-		public ComponentDataLookup(EntityManager manager)
+		public ComponentData(EntityManager manager)
 		{
-			this.manager = manager;
-			this.hashCode = TypeRegistry<T>.info.hashCode;
+			this.manager     = manager;
+			this.hashCode    = TypeRegistry<T>.info.hashCode;
 			this.cachedIndex = 1;
 		}
 
@@ -52,7 +52,7 @@ namespace Checs
 				{
 					var componentIndex = ArchetypeUtility.GetComponentIndex(entityInChunk.chunk->archetype, this.hashCode, this.cachedIndex);
 
-					if(componentIndex >= 0)
+					if(componentIndex > 0)
 					{
 						this.cachedIndex = componentIndex;
 						ChunkUtility.GetComponentDataPtr<T>(entityInChunk.chunk, componentIndex)[entityInChunk.index] = value;

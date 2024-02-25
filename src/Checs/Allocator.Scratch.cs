@@ -98,12 +98,6 @@ namespace Checs
 		public static void AlignedFree(void* ptr)
 		{
 		}
-		
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		internal static int Align16(int byteCount)
-		{
-			return ((byteCount - 1) | 15) + 1;
-		}
 
 		public static int RoundToPowerOfTwo(int value)
 		{

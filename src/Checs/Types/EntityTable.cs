@@ -127,6 +127,8 @@ namespace Checs
 		/// Gets all component values of a specific component type.
 		/// </summary>
 		/// <remarks>
+		/// Access to <see cref="Entity"/> values is not allowed.
+		/// Use <see cref="EntityTable.GetEntities"/> or <see cref="EntityTable.GetComponentDataReadOnly{T}"/> instead.
 		/// Increments the change version.
 		/// </remarks>
 		/// <typeparam name="T">The component type of the values.</typeparam>
@@ -142,7 +144,7 @@ namespace Checs
 				var hashCode = TypeRegistry<T>.info.hashCode;
 				var componentIndex = ArchetypeUtility.GetComponentIndex(this.chunk->archetype, hashCode);
 
-				if(componentIndex >= 0)
+				if(componentIndex > 0)
 				{
 					var ptr = ChunkUtility.GetComponentDataPtr<T>(this.chunk, componentIndex);
 					ChunkUtility.MarkAsChanged(this.chunk, componentIndex);
@@ -158,6 +160,7 @@ namespace Checs
 		/// The address is aligned to a 16 byte boundary.
 		/// </summary>
 		/// <remarks>
+		/// Gives direct write access to the entities. 
 		/// Does not increment the change version, although modification of the data is possible.
 		/// If needed, call <see cref="EntityTable.GetComponentData{T}"/> to increment the change version.
 		/// </remarks>
@@ -181,6 +184,48 @@ namespace Checs
 			}
 			
 			return IntPtr.Zero;
+		}
+
+		/// <summary>
+		/// Gets the component types in the table including the
+		/// <see cref="Entity"/> component type.
+		/// </summary>
+		/// <param name="types">The destination buffer.</param>
+		/// <returns>The number of types in the buffer.</returns>
+		public int GetComponentTypes(Span<ComponentType> types)
+		{
+			unsafe
+			{
+				return ArchetypeUtility.GetComponentTypes(chunk->archetype, 0, types);
+			}
+		}
+
+		/// <summary>
+		/// Returns a copy of the values of the specified component type
+		/// in a new array.
+		/// </summary>
+		/// <param name="type">The component type.</param>
+		/// <returns>A new array instance.</returns>
+		public Array ToArray(ComponentType type)
+		{
+			unsafe
+			{
+				var componentIndex = ArchetypeUtility.GetComponentIndex(chunk->archetype, type.hashCode);
+
+				if(componentIndex >= 0)
+				{
+					var array = Array.CreateInstance(type.ToType(), this.length);
+					
+					ref var dst = ref MemoryMarshal.GetArrayDataReference(array);
+					ref var src = ref Unsafe.AsRef<byte>(ChunkUtility.GetComponentDataPtr(chunk, this.index, componentIndex));
+
+					Unsafe.CopyBlockUnaligned(ref dst, ref src, (uint)(type.size * length));
+
+					return array;
+				}
+			}
+
+			return null;
 		}
 
 		public bool DidChange(EntityChangeVersion changeVersion)
@@ -213,3 +258,27 @@ namespace Checs
 		}
 	}
 }
+
+
+/*
+
+var it = manager.GetIterator();
+
+while(it.TryNext(out var table))
+{
+	var positions  = table.AsSpan<Position>();
+	var rotations  = table.AsSpan<Rotation>();
+	var velocities = table.AsReadOnlySpan<Velocity>(); 
+}
+
+while(it.TryNext(out var table))
+{
+	var positions  = table.GetComponents<Position>();
+	var rotations  = table.GetComponents<Rotation>();
+	var velocities = table.GetComponentsReadOnly<Velocity>(); 
+}
+
+manager.SetComponent(entity, new Position());
+manager.GetComponent<Position>(entity);
+
+*/

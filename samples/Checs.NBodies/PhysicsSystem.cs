@@ -26,66 +26,64 @@ namespace Checs.NBodies
 
 		public override void Run(float deltaTime)
 		{
-			var itOuter = manager.GetIterator(this.query);
+			var itLhs = manager.GetIterator(this.query);
 
-			while(itOuter.TryNext(out var a))
+			while(itLhs.TryNext(out var lhs))
 			{
-				var itInner = manager.GetIterator(this.query);
+				var itRhs = manager.GetIterator(this.query);
 
-				while(itInner.TryNext(out var b))
-					Compute(a, b, G);
-
-				itInner.Dispose();
+				while(itRhs.TryNext(out var rhs))
+					Compute(lhs, rhs, G);
 			}
-
-			itOuter.Dispose();
 
 			var time = TimeScale * deltaTime;
 
-			manager.ForEach(this.query, static (span, time) => {
-				var atime         = (time * time) * 0.5f;
-				var positions     = span.GetComponentData<Position>();
-				var velocities    = span.GetComponentData<Velocity>();
-				var accelerations = span.GetComponentDataReadOnly<Acceleration>();
+			var it = manager.GetIterator(this.query);
 
-				for(int i = 0; i < span.length; ++i)
+			while(it.TryNext(out var table))
+			{
+				var positions     = table.GetComponentData<Position>();
+				var velocities    = table.GetComponentData<Velocity>();
+				var accelerations = table.GetComponentDataReadOnly<Acceleration>();
+
+				var atime = (time * time) * 0.5f;
+				
+				for(int i = 0; i < table.length; ++i)
 				{
-					positions[i].value += velocities[i].value * time + atime * accelerations[i].value;
+					positions[i].value  += velocities[i].value * time + atime * accelerations[i].value;
 					velocities[i].value += accelerations[i].value * time;
 				}
-			}, time);
+			}
 		}
 
-		public static void Compute(EntityTable a, EntityTable b, float g)
+		public static void Compute(EntityTable lhs, EntityTable rhs, float g)
 		{
-			var aEntities      = a.GetEntities();
-			var aAccelerations = a.GetComponentData<Acceleration>();
-			var aPositions     = a.GetComponentDataReadOnly<Position>();
-			var aVelocities    = a.GetComponentDataReadOnly<Velocity>();
+			var entitiesA      = lhs.GetEntities();
+			var accelerationsA = lhs.GetComponentData<Acceleration>();
+			var positionsA     = lhs.GetComponentDataReadOnly<Position>();
+			var velocitiesA    = lhs.GetComponentDataReadOnly<Velocity>();
 
-			var bEntities      = b.GetEntities();
-			var bPositions     = b.GetComponentDataReadOnly<Position>();
-			var bMasses        = b.GetComponentDataReadOnly<Mass>();
+			var entitiesB  = rhs.GetEntities();
+			var positionsB = rhs.GetComponentDataReadOnly<Position>();
+			var massesB    = rhs.GetComponentDataReadOnly<Mass>();
 
-			for(int i = 0; i < a.length; ++i)
+			for(int a = 0; a < lhs.length; ++a)
 			{
-				var entity = aEntities[i];
 				var acceleration = Vector2.Zero;
-				var position = aPositions[i].value;
 
-				for(int j = 0; j < b.length; ++j)
+				for(int b = 0; b < rhs.length; ++b)
 				{
-					if(entity == bEntities[j])
+					if(entitiesA[a] == entitiesB[b])
 						continue;
 
-					var delta = bPositions[j].value - position;
-					var mag = delta.Length();
-					var m = bMasses[j].value / (mag * mag * mag);
+					var delta = positionsB[b].value - positionsA[a].value;
+					var mag   = delta.Length();
+					var m     = massesB[b].value / (mag * mag * mag);
 
 					acceleration += delta * m;
 				}
 
-				aAccelerations[i].value = g * acceleration;
+				accelerationsA[a].value = g * acceleration;
 			}
 		}
 	}

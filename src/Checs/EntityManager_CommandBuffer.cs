@@ -89,7 +89,7 @@ namespace Checs
 						WriteComponentDataInternal(entities, buffer, prev->size, prev->hashCode);
 					} break;
 				}
-
+				
 				if((header->type & CommandType.Entity) == 0)
 					playback->prevCommand = header;
 			}

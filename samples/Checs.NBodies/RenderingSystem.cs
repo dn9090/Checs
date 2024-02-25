@@ -8,18 +8,11 @@ namespace Checs.NBodies
 {
 	public class RenderingSystem : System
 	{
-		public struct RenderContext
-		{
-			public RenderTarget renderTarget;
-
-			public CircleShape circle;
-		}
-
 		public RenderTarget renderTarget;
 
-		public EntityQuery query;
+		public CircleShape circle;
 
-		public RenderContext context;
+		public EntityQuery query;
 
 		public RenderingSystem(RenderTarget renderTarget)
 		{
@@ -33,29 +26,30 @@ namespace Checs.NBodies
 				ComponentType.Of<Mass>(),
 				ComponentType.Of<RenderShape>()
 			});
-			
-			this.context = new RenderContext {
-				renderTarget = renderTarget,
-				circle = new CircleShape()
-			};
+
+			this.circle = new CircleShape();
 		}
 
 		public override void Run(float deltaTime)
 		{
-			manager.ForEach(this.query, static (span, context) => {
-				var positions = span.GetComponentDataReadOnly<Position>();
-				var masses    = span.GetComponentDataReadOnly<Mass>();
-				var shapes    = span.GetComponentDataReadOnly<RenderShape>();
+			var it = manager.GetIterator(this.query);
+			
+			while(it.TryNext(out var table))
+			{
+				var positions = table.GetComponentDataReadOnly<Position>();
+				var masses    = table.GetComponentDataReadOnly<Mass>();
+				var shapes    = table.GetComponentDataReadOnly<RenderShape>();
 
-				for(int i = 0; i < span.length; ++i)
+				for(int i = 0; i < table.length; ++i)
 				{
-					context.circle.Radius = shapes[i].radius;
-					context.circle.Origin = new Vector2f(shapes[i].radius, shapes[i].radius);
-					context.circle.Position = new Vector2f(positions[i].value.X, positions[i].value.Y);
-					context.circle.FillColor = shapes[i].color;
-					context.renderTarget.Draw(context.circle);
+					circle.Radius    = shapes[i].radius;
+					circle.Origin    = new Vector2f(shapes[i].radius, shapes[i].radius);
+					circle.Position  = new Vector2f(positions[i].value.X, positions[i].value.Y);
+					circle.FillColor = shapes[i].color;
+
+					renderTarget.Draw(circle);
 				}
-			}, this.context);
+			}
 		}
 	}
 }

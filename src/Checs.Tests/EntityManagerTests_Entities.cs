@@ -54,7 +54,7 @@ namespace Checs.Tests
 			}
 
 			{
-				var entities = new Entity[10000];
+				var entities = new Entity[20_000];
 				manager.CreateEntity(entities);
 
 				Assert.Equal(entities[entities.Length - 1].index, entities[0].index + entities.Length - 1);
@@ -115,6 +115,18 @@ namespace Checs.Tests
 
 				Assert.All(entities, x => Assert.False(manager.Exists(x)));
 				Assert.Equal(0, manager.GetEntityCount(query)); 
+			}
+
+			{
+				var archetype = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>(),
+					ComponentType.Of<Velocity>()
+				});
+
+				manager.CreateEntity(archetype, 5000);
+				manager.DestroyEntity(archetype);
+				Assert.Equal(0, manager.GetEntityCount(archetype));
 			}
 		}
 
@@ -204,6 +216,29 @@ namespace Checs.Tests
 				manager.MoveEntity(entity, rhs);
 
 				Assert.Equal(rhs, manager.GetArchetype(entity));
+			}
+
+			{
+				var lhs = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Rotation>()
+				});
+				var rhs = manager.CreateArchetype(new[] {
+					ComponentType.Of<Position>(),
+					ComponentType.Of<Scale>()
+				});
+
+				var entities      = new Entity[20];
+				var movedEntities = new Entity[20];
+
+				manager.CreateEntity(lhs, entities.AsSpan(0, 10));
+				manager.CreateEntity(rhs, entities.AsSpan(10));
+
+				var count = manager.MoveEntity(entities, movedEntities, rhs);
+
+				Assert.Equal(10, count);
+				Assert.Equal(entities.Take(10), movedEntities.Take(count));
+				Assert.All(entities, x => Assert.Equal(rhs, manager.GetArchetype(x)));
 			}
 		}
 

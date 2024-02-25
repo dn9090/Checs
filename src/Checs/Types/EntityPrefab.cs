@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Checs
 {
@@ -38,7 +39,7 @@ namespace Checs
 			this.buffer = new byte[byteCount];
 			this.count  = 0;
 		}
-
+		
 		public EntityPrefab(ReadOnlySpan<ComponentType> types)
 		{
 			this.types  = new ComponentType[types.Length];
@@ -127,7 +128,7 @@ namespace Checs
 				types[count++] = new ComponentType(typeInfo);
 
 				offset = used;
-				used  += Allocator.Align16(typeInfo.size);
+				used  += ChunkUtility.Align(typeInfo.size);
 			}
 
 			Unsafe.WriteUnaligned(ref this.buffer[offset], value);
@@ -144,6 +145,32 @@ namespace Checs
 		{
 			SetComponentData<T>(in value);
 			return this;
+		}
+
+		/// <summary>
+		/// Writes the boxed value of the component type or adds the component type
+		/// if it was not found.
+		/// </summary>
+		/// <param name="value">The boxed value.</param>
+		public void WriteComponentData(object value)
+		{
+			var typeInfo = TypeRegistry.GetTypeInfo(value.GetType());
+			var offset   = GetOffset(typeInfo.hashCode);
+
+			if(offset < 0)
+			{
+				EnsureCapacity(typeInfo.size);
+
+				types[count++] = new ComponentType(typeInfo);
+
+				offset = used;
+				used  += ChunkUtility.Align(typeInfo.size);
+			}
+
+			var src = TypeUtility.Unbox(value, typeInfo.size);
+			var dst = this.buffer.AsSpan(offset);
+			
+			src.CopyTo(dst);
 		}
 
 		internal void EnsureCapacity(int requestedCapacity)
@@ -166,7 +193,7 @@ namespace Checs
 				if(this.types[i].hashCode == hashCode)
 					return offset;
 				
-				offset += Allocator.Align16(this.types[i].size);
+				offset += ChunkUtility.Align(this.types[i].size);
 			}
 				
 			return -1;
@@ -184,7 +211,7 @@ namespace Checs
 				var src = this.buffer.AsSpan(offset, this.types[i].size);
 				var dst = new Span<byte>(componentPtr, this.types[i].size);
 
-				offset += Allocator.Align16(this.types[i].size);
+				offset += ChunkUtility.Align(this.types[i].size);
 
 				src.CopyTo(dst);
 			}
@@ -202,7 +229,7 @@ namespace Checs
 				var src = new Span<byte>(componentPtr, this.types[i].size);
 				var dst = this.buffer.AsSpan(offset, this.types[i].size);
 
-				offset += Allocator.Align16(this.types[i].size);
+				offset += ChunkUtility.Align(this.types[i].size);
 
 				src.CopyTo(dst);
 			}
@@ -213,7 +240,7 @@ namespace Checs
 			var size = 0;
 
 			for(int i = 0; i < types.Length; ++i)
-				size += Allocator.Align16(types[i].size);
+				size += ChunkUtility.Align(types[i].size);
 			
 			return size;
 		}

@@ -15,16 +15,6 @@ namespace Checs
 			chunk->version   = 0;
 		}
 
-		/*public static int CalculateBufferCapacity(int* sizes, int count)
-		{
-			int blockSize = 0;
-
-			for(int i = 0; i < count; ++i)
-				blockSize += sizes[i];
-
-			return Chunk.BufferSize / blockSize;
-		}*/
-
 		public static int CalculateCapacity(int* sizes, int count)
 		{
 			// Calculate the block size which equals the sum of all sizes
@@ -45,15 +35,16 @@ namespace Checs
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static int Align(int byteCount)
+		internal static int Align(int value)
 		{
-			return Allocator.Align16(byteCount);
+			const int Alignment = 16;
+			return (value + Alignment - 1) & ~(Alignment - 1);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int AlignComponentArraySize(int size, int elementCount)
 		{
-			return Allocator.Align16(size * elementCount);
+			return Align(size * elementCount);
 		}
 
 		public static int CalculateAlignedSize(int* sizes, int count, int elementCount)
@@ -83,6 +74,11 @@ namespace Checs
 
 			for(int i = 1; i < count; ++i)
 				offsets[i] = offsets[i - 1] + AlignComponentArraySize(sizes[i - 1], chunkCapacity);
+		}
+
+		public static Span<byte> GetBuffer(Chunk* chunk)
+		{
+			return new Span<byte>(chunk->buffer, Chunk.BufferSize);
 		}
 
 		public static void ZeroComponentData(Chunk* chunk, int index, int count)
@@ -390,7 +386,7 @@ namespace Checs
 					*(ptr + 1) = temp;
 					*(ptr + 2) = temp;
 					*(ptr + 3) = temp;
-					ptr += 4;
+					ptr   += 4;
 					count -= 4;
 				} while (count >= 4);
 			}

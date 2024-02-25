@@ -188,5 +188,30 @@ namespace Checs.Tests
 				Assert.Equal(rotation, entityPrefab.GetComponentData<Rotation>());
 			}
 		}
+
+		[Fact]
+		public void Boxed()
+		{
+			{
+				var prefab = new EntityPrefab();
+
+				object boxed = new Position(1f, 2f, 3f);
+
+				prefab.WriteComponentData(boxed);
+
+				Assert.Equal((Position)boxed, prefab.GetComponentData<Position>());
+			}
+
+			{
+				var prefab = new EntityPrefab()
+					.WithComponentData(new Rotation(4f, 3f, 2f, 1f));
+				
+				object boxed = new Rotation(1f, 2f, 3f, 4f);
+
+				prefab.WriteComponentData(boxed);
+
+				Assert.Equal((Rotation)boxed, prefab.GetComponentData<Rotation>());
+			}
+		}
 	}
 }

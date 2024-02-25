@@ -14,27 +14,33 @@ namespace Checs
 		public int index;
 
 		/// <summary>
-		/// The number of entities in the archetype.
+		/// The hash code of the archetype.
 		/// </summary>
 		[FieldOffset(4)]
+		public uint hashCode;
+
+		/// <summary>
+		/// The number of entities in the archetype.
+		/// </summary>
+		[FieldOffset(8)]
 		public int entityCount;
 
 		/// <summary>
 		/// The number of components of the archetype.
 		/// </summary>
-		[FieldOffset(8)]
+		[FieldOffset(12)]
 		public int componentCount;
 
 		/// <summary>
 		/// The maximum number of entities in a chunk.
 		/// </summary>
-		[FieldOffset(12)]
+		[FieldOffset(16)]
 		public int chunkCapacity;
 
 		/// <summary>
-		/// The highest chunk version of in the archetype.
+		/// The highest chunk version in the archetype.
 		/// </summary>
-		[FieldOffset(16)]
+		[FieldOffset(20)]
 		public uint chunkVersion;
 
 		[FieldOffset(24)]
@@ -60,15 +66,16 @@ namespace Checs
 			this.chunkList.Dispose();
 		}
 
-		public static void Construct(Archetype* archetype, uint* componentHashCodes, int* componentSizes,
+		public static void Construct(Archetype* archetype, uint hashCode, uint* componentHashCodes, int* componentSizes,
 			int componentCount, int chunkCapacity, ChangeVersion changeVersion)
 		{
-			archetype->entityCount = 0;
+			archetype->hashCode       = hashCode;
+			archetype->entityCount    = 0;
 			archetype->componentCount = componentCount;
-			archetype->chunkCapacity = chunkCapacity;
-			archetype->chunkVersion = 0;
-			archetype->chunkList = new ChunkList();
-			archetype->changeVersion = changeVersion;
+			archetype->chunkCapacity  = chunkCapacity;
+			archetype->chunkVersion   = 0;
+			archetype->chunkList      = new ChunkList();
+			archetype->changeVersion  = changeVersion;
 
 			var hashCodes = GetComponentHashCodes(archetype);
 			var sizes     = GetComponentSizes(archetype);

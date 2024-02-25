@@ -247,6 +247,9 @@ namespace Checs
 		{
 			CheckDisposed();
 
+			if(count < 0)
+				ThrowHelper.NonNegativeNumberRequired();
+
 			unsafe
 			{
 				var chunk       = this.head->current;
@@ -269,10 +272,16 @@ namespace Checs
 		{
 			CheckDisposed();
 
+			if(entities.Length == 0)
+				return;
+
 			unsafe
 			{
-				Bump(CommandType.DestroyEntity, sizeof(DestroyEntityCommand));
-				AppendEntities(CommandType.DestroyEntity, entities);
+				if(entities.Length > 0)
+				{
+					Bump(CommandType.DestroyEntity, sizeof(DestroyEntityCommand));
+					AppendEntities(CommandType.DestroyEntity, entities);
+				}
 			}
 		}
 
@@ -326,10 +335,13 @@ namespace Checs
 
 			unsafe
 			{
-				var command = (MoveEntityCommand*)Bump(CommandType.MoveEntity, sizeof(MoveEntityCommand));
-				command->archetype = archetype;
+				if(entities.Length > 0)
+				{
+					var command = (MoveEntityCommand*)Bump(CommandType.MoveEntity, sizeof(MoveEntityCommand));
+					command->archetype = archetype;
 
-				AppendEntities(CommandType.MoveEntity, entities);
+					AppendEntities(CommandType.MoveEntity, entities);
+				}
 			}
 		}
 
@@ -337,6 +349,9 @@ namespace Checs
 		{
 			CheckDisposed();
 
+			if(count < 0)
+				ThrowHelper.NonNegativeNumberRequired();
+			
 			unsafe
 			{
 				var chunk = this.head->current;
@@ -358,6 +373,9 @@ namespace Checs
 		public void Instantiate(EntityPrefab prefab, int count = 1)
 		{
 			CheckDisposed();
+
+			if(count < 0)
+				ThrowHelper.NonNegativeNumberRequired();
 
 			unsafe
 			{
@@ -391,16 +409,19 @@ namespace Checs
 
 			unsafe
 			{
-				var typeInfo = TypeRegistry<T>.info;
-				var command = (SetComponentDataCommand*)Bump(CommandType.SetComponentData,
-					sizeof(SetComponentDataCommand), typeInfo.size, 1, out _);
-				command->hashCode = typeInfo.hashCode;
-				command->size     = typeInfo.size;
+				if(entities.Length > 0)
+				{
+					var typeInfo = TypeRegistry<T>.info;
+					var command = (SetComponentDataCommand*)Bump(CommandType.SetComponentData,
+						sizeof(SetComponentDataCommand), typeInfo.size, 1, out _);
+					command->hashCode = typeInfo.hashCode;
+					command->size     = typeInfo.size;
 
-				var buffer = GetBuffer(command, sizeof(SetComponentDataCommand));
-				Unsafe.WriteUnaligned(buffer, value);
+					var buffer = GetBuffer(command, sizeof(SetComponentDataCommand));
+					Unsafe.WriteUnaligned(buffer, value);
 
-				AppendEntities(CommandType.SetComponentData, entities);
+					AppendEntities(CommandType.SetComponentData, entities);
+				}
 			}
 		}
 

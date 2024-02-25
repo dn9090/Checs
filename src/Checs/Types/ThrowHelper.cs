@@ -1,11 +1,20 @@
 using System;
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Checs
 {
+	[StackTraceHidden]
 	internal static class ThrowHelper
 	{
+		[DoesNotReturn]
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static void NonNegativeNumberRequired()
+		{
+			throw new ArgumentOutOfRangeException("Non-negative number required.");
+		}
+
 		[DoesNotReturn]
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		public static void ThrowArchetypeTooLargeExeception()

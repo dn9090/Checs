@@ -62,20 +62,20 @@ namespace Checs.NBodies
 
 			var rand = new Random();
 
-			manager.CreateEntity(this.archetype, count, static (span, rand) => {
-				var positions  = span.GetComponentData<Position>();
-				var velocities = span.GetComponentData<Velocity>();
-				var masses     = span.GetComponentData<Mass>();
-				var shapes     = span.GetComponentData<RenderShape>();
+			manager.CreateEntity(this.archetype, count, static (table, rand) => {
+				var positions  = table.GetComponentData<Position>();
+				var velocities = table.GetComponentData<Velocity>();
+				var masses     = table.GetComponentData<Mass>();
+				var shapes     = table.GetComponentData<RenderShape>();
 				
-				for(int i = 0; i < span.length; ++i)
+				for(int i = 0; i < table.length; ++i)
 				{
 					positions[i].value = new Vector2(rand.Next() % 2000 - 700, rand.Next() % 300 - 300);
 					masses[i].value    = BaseMass + ((float)rand.Next() / (float)int.MaxValue) * VarMass;
 
 					var radius = positions[i].value.Length();
 					var normal = Vector2.Normalize(positions[i].value);
-					var rot    = Perpendicular(normal);
+					var rot    = NMath.Perpendicular(normal);
 					var v      = MathF.Sqrt(Initial / radius / masses[i].value / Speed);
 
 					velocities[i].value = rot * v;
@@ -90,15 +90,10 @@ namespace Checs.NBodies
 			var entity = manager.CreateEntity(this.archetype);
 
 			manager.AddComponentData<GravCenter>(entity);
-			manager.SetComponentData<Position>(entity, new Position { value = Vector2.Zero });
-			manager.SetComponentData<Velocity>(entity, new Velocity { value = Vector2.Zero });
-			manager.SetComponentData<Mass>(entity, new Mass { value = 12000.0f });
-			manager.SetComponentData<RenderShape>(entity, new RenderShape { radius = 100f, baseColor = new Color(255, 240, 225) });
-		}
-
-		public static Vector2 Perpendicular(Vector2 value)
-		{
-			return new Vector2(-value.Y, value.X);
+			manager.SetComponentData(entity, new Position(Vector2.Zero));
+			manager.SetComponentData(entity, new Velocity(Vector2.Zero));
+			manager.SetComponentData(entity, new Mass(12000.0f));
+			manager.SetComponentData(entity, new RenderShape { radius = 100f, baseColor = new Color(255, 240, 225) });
 		}
 	}
 }

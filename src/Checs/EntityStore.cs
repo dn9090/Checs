@@ -1,4 +1,3 @@
-//#define CHECS_DISABLE_SSE
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -112,6 +111,27 @@ namespace Checs
 				this.entitiesInChunk[entities[i].index].index = startIndex + i;
 				this.entitiesInChunk[entities[i].index].chunk = chunk;
 			}
+		}
+
+		public void Remap(Chunk* chunk, int startIndex, int count, uint version)
+		{
+			ChunkUtility.IncrementVersion(chunk);
+			ChunkUtility.ReserveEntities(chunk, count);
+			
+			var entities = ChunkUtility.GetEntities(chunk, startIndex);
+			
+			for(int i = 0; i < count; ++i)
+			{
+				if(this.entitiesInChunk[entities[i].index].version != 0)
+					ChunkUtility.PatchEntities(this.entitiesInChunk[entities[i].index].chunk, this.entitiesInChunk[entities[i].index].index, 1); // TODO
+
+				this.entitiesInChunk[entities[i].index].index   = startIndex + i;
+				this.entitiesInChunk[entities[i].index].version = entities[i].version;
+				this.entitiesInChunk[entities[i].index].chunk   = chunk;
+			}
+
+			if(version > this.version)
+				this.version = version;
 		}
 		
 		public void Dispose()

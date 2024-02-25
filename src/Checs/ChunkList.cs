@@ -26,6 +26,7 @@ namespace Checs
 		public void Remove(Chunk* chunk)
 		{
 			this.chunks[chunk->index] = this.chunks[--this.count];
+			this.chunks[chunk->index]->index = chunk->index;
 		}
 
 		public void Resize()
@@ -37,6 +38,10 @@ namespace Checs
 		public void Dispose()
 		{
 			Allocator.Free(this.chunks);
+
+			this.chunks   = null;
+			this.capacity = 0;
+			this.count    = 0;
 		}
 	}
 }

@@ -34,12 +34,12 @@ namespace Checs
 			this.archetypeList.Dispose();
 		}
 
-		public static void Construct(Query* query,
-			uint* includeHashCodes, int includeCount, uint* excludeHashCodes, int excludeCount)
+		public static void Construct(Query* query, uint* includeHashCodes, int includeCount,
+			uint* excludeHashCodes, int excludeCount)
 		{
-			query->includeCount = includeCount;
-			query->excludeCount = excludeCount;
-			query->archetypeList = new ArchetypeList();
+			query->includeCount        = includeCount;
+			query->excludeCount        = excludeCount;
+			query->archetypeList       = new ArchetypeList();
 			query->knownArchetypeCount = 0;
 			
 			Unsafe.CopyBlockUnaligned(GetIncludeHashCodes(query), includeHashCodes, (uint)(sizeof(uint) * includeCount));

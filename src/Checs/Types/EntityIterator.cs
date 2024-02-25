@@ -8,7 +8,7 @@ namespace Checs
 	/// Iterator for tables of an archetype or query.
 	/// </summary>
 	[StructLayout(LayoutKind.Sequential)]
-	public struct EntityIterator : IDisposable
+	public struct EntityIterator
 	{
 		internal unsafe ArchetypeList* archetypeList;
 
@@ -76,12 +76,6 @@ namespace Checs
 			table = default;
 
 			return false;	
-		}
-		
-		public void Dispose()
-		{
-			this.chunkIndex = -1;
-			this.archetypeIndex = -1;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]

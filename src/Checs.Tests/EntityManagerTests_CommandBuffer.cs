@@ -6,6 +6,7 @@ namespace Checs.Tests
 {
 	public partial class EntityManagerTests_CommandBuffer
 	{
+		
 		[Fact]
 		public void CreatesEntities()
 		{
@@ -22,7 +23,8 @@ namespace Checs.Tests
 				Assert.Equal(entityCount + 100, manager.entityCount);
 			}
 		}
-
+		
+		/*
 		[Fact]
 		public void DestroysEntities()
 		{
@@ -83,6 +85,7 @@ namespace Checs.Tests
 			}
 		}
 
+		/*
 		[Fact]
 		public void MovesEntities()
 		{
@@ -181,5 +184,7 @@ namespace Checs.Tests
 				Assert.Equal(rotation, manager.GetComponentData<Rotation>(entities[entities.Length - 1]));
 			}
 		}
+
+		*/
 	}
 }

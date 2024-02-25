@@ -46,6 +46,18 @@ namespace Checs
 			return true;
 		}
 
+		[StructLayout(LayoutKind.Sequential)]
+		internal class RawObject
+		{
+			public byte data;
+		}
+
+		public static Span<byte> Unbox(object value, int size)
+		{
+			var raw = Unsafe.As<RawObject>(value);
+			return MemoryMarshal.CreateSpan(ref raw.data, size);
+		}
+
 		public static int Sort(ReadOnlySpan<ComponentType> types, uint* hashCodes, int* sizes, int startIndex)
 		{
 			var count = startIndex;

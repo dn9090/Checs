@@ -36,6 +36,12 @@ namespace Checs
 			this.size = info.size;
 		}
 
+		public Type ToType()
+		{
+			var info = TypeRegistry.GetTypeInfo(hashCode);
+			return info.type;
+		}
+
 		public static bool operator ==(ComponentType lhs, ComponentType rhs) =>
 			lhs.hashCode == rhs.hashCode;
 

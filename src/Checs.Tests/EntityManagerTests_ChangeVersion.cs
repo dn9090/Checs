@@ -117,7 +117,7 @@ namespace Checs.Tests
 				Assert.False(manager.DidChange(changeVersion, archetype));
 
 				manager.SetComponentData(entity, new Position(1f, 2f, 3f));
-				manager.SetOrAddComponentData(entity, new Rotation(4f, 3f, 2f, 1f));
+				manager.AddComponentData(entity, new Rotation(4f, 3f, 2f, 1f));
 
 				Assert.True(manager.DidChange(changeVersion));
 				Assert.True(manager.DidChange(changeVersion, entity));

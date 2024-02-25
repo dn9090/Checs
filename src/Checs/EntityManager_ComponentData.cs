@@ -2,9 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
-using System.Threading;
 
 namespace Checs
 {
@@ -162,7 +159,7 @@ namespace Checs
 		/// <param name="value">The value of the component type.</param>
 		/// <typeparam name="T">The component type of the value.</typeparam>
 		/// <returns>True if the entity exists.</returns>
-		public bool SetOrAddComponentData<T>(Entity entity, in T value) where T : unmanaged
+		public bool AddComponentData<T>(Entity entity, in T value = default) where T : unmanaged
 		{
 			if(TryGetEntityInChunk(entity, out var entityInChunk))
 			{
@@ -178,48 +175,18 @@ namespace Checs
 					componentIndex = ArchetypeUtility.GetComponentIndex(entityInChunk.chunk->archetype, typeInfo.hashCode);	
 				}
 
-				ChunkUtility.GetComponentDataPtr<T>(entityInChunk.chunk, componentIndex)[entityInChunk.index] = value;
-				ChunkUtility.MarkAsChanged(entityInChunk.chunk, componentIndex);
+				if(componentIndex > 0)
+				{
+					ChunkUtility.GetComponentDataPtr<T>(entityInChunk.chunk, componentIndex)[entityInChunk.index] = value;
+					ChunkUtility.MarkAsChanged(entityInChunk.chunk, componentIndex);
+				}
+
 				return true;
 			}
 
 			return false;
 		}
-		
-		/// <summary>
-		/// Adds a specific component type to the entity
-		/// and sets the value of the component.
-		/// </summary>
-		/// <remarks>
-		/// Increments the change version.
-		/// </remarks>
-		/// <param name="entity">The entity.</param>
-		/// <param name="value">The value of the component type.</param>
-		/// <typeparam name="T">The component type of the value.</typeparam>
-		/// <returns>True if the entity exists and does not have the component type.</returns>
-		public bool AddComponentData<T>(Entity entity, in T value = default) where T : unmanaged
-		{
-			if(TryGetEntityInChunk(entity, out var entityInChunk))
-			{
-				var typeInfo = TypeRegistry<T>.info;
-				var componentIndex = ArchetypeUtility.GetComponentIndex(entityInChunk.chunk->archetype, typeInfo.hashCode);
 
-				if(componentIndex < 0)
-				{
-					var archetype = ExtendArchetype(entityInChunk.chunk->archetype, typeInfo.hashCode, typeInfo.size);
-					MoveEntityBatch(new EntityBatch(entityInChunk), GetArchetypeInternal(archetype));
-
-					entityInChunk = this.entityStore.entitiesInChunk[entity.index];
-					componentIndex = ArchetypeUtility.GetComponentIndex(entityInChunk.chunk->archetype, typeInfo.hashCode);
-					ChunkUtility.GetComponentDataPtr<T>(entityInChunk.chunk, componentIndex)[entityInChunk.index] = value;
-					ChunkUtility.MarkAsChanged(entityInChunk.chunk, componentIndex);
-					return true;
-				}
-			}
-
-			return false;
-		}
-		
 		/// <summary>
 		/// Removes a specific component type from the entity.
 		/// </summary>
@@ -312,6 +279,17 @@ namespace Checs
 		}
 
 		/// <summary>
+		/// Writes byte wise the value of the component type for an entity.
+		/// </summary>
+		/// <param name="entity">The entity.</param>
+		/// <param name="value">The bytes of the value.</param>
+		/// <param name="type">The component type.</param>
+		public void WriteComponentData(Entity entity, ReadOnlySpan<byte> value, ComponentType type)
+		{
+			WriteComponentData(new Span<Entity>(Unsafe.AsPointer(ref entity), 1), value, type);
+		}
+
+		/// <summary>
 		/// Writes byte wise the value of the component type for all entities in the buffer.
 		/// The length of the buffer must match the size of the component type in bytes.
 		/// </summary>
@@ -330,6 +308,35 @@ namespace Checs
 				WriteComponentDataInternal(entities, ptr, type.size, type.hashCode);
 		}
 
+		/// <summary>
+		/// Writes the boxed value of the component type for an entity.
+		/// </summary>
+		/// <param name="entity">The entity.</param>
+		/// <param name="value">The boxed value.</param>
+		public void WriteComponentData(Entity entity, object value)
+		{
+			WriteComponentData(new Span<Entity>(Unsafe.AsPointer(ref entity), 1), value);
+		}
+		
+		/// <summary>
+		/// Writes the boxed value of the component type for all entities in the buffer.
+		/// </summary>
+		/// <remarks>
+		/// Allocates a <see cref="System.Runtime.InteropServices.GCHandle"/> for the boxed value.
+		/// Increments the change version.
+		/// </remarks>
+		/// <param name="entities">The entity buffer.</param>
+		/// <param name="value">The boxed value.</param>
+		public void WriteComponentData(ReadOnlySpan<Entity> entities, object value)
+		{
+			var typeInfo = TypeRegistry.GetTypeInfo(value.GetType());
+			//var handle   = GCHandle.Alloc(value, GCHandleType.Pinned);
+
+			fixed(byte* ptr = TypeUtility.Unbox(value, typeInfo.size))
+				WriteComponentDataInternal(entities, ptr, typeInfo.size, typeInfo.hashCode);
+			//handle.Free();
+		}
+
 		internal void WriteComponentDataInternal(ReadOnlySpan<Entity> entities, byte* value, int size, uint hashCode)
 		{
 			var count = 0;
@@ -345,7 +352,7 @@ namespace Checs
 
 				var componentIndex = ArchetypeUtility.GetComponentIndex(entityBatch.chunk->archetype, hashCode);
 
-				if(componentIndex >= 0) // TODO
+				if(componentIndex > 0) // TODO
 				{
 					ChunkUtility.RepeatComponentData(entityBatch.chunk, entityBatch.index, entityBatch.count,
 						componentIndex, value, size);

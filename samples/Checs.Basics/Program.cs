@@ -10,14 +10,14 @@ using var manager = new EntityManager();
 var entity = manager.CreateEntity();
 
 // Add a position, rotation and velocity component to the entity.
-manager.AddComponentData<Position>(entity, new Position { x = 1f, y = 2f, z = 3f});
-manager.AddComponentData<Rotation>(entity, new Rotation { x = 1f, y = 2f, z = 3f, w = 4f});
+manager.AddComponentData(entity, new Position { x = 1f, y = 2f, z = 3f});
+manager.AddComponentData(entity, new Rotation { x = 1f, y = 2f, z = 3f, w = 4f});
 manager.AddComponentData<Velocity>(entity);
 
 // Create an archetype which automatically adds the components to entities
 // created with the archetype.
-// It is faster than manually adding all components and
-// operations on archetypes can be batched.
+// It is faster than manually adding all components and operations
+// on archetypes are batchable.
 var archetype = manager.CreateArchetype(new[] {
 	ComponentType.Of<Position>(),
 	ComponentType.Of<Rotation>(),
@@ -25,7 +25,7 @@ var archetype = manager.CreateArchetype(new[] {
 	ComponentType.Of<ChildOf>()
 });
 
-// Create the entity with the archetype.
+// Create an entity with the archetype.
 var child = manager.CreateEntity(archetype);
 
 // Set the first entity as the parent value.
@@ -66,7 +66,10 @@ manager.ForEach(query, (table, manager) => {
 });
 
 // Use the universal query to iterate over all entities.
-manager.ForEach(EntityQuery.universal, (table, manager) => {
+var it = manager.GetIterator(EntityQuery.universal);
+
+while(it.TryNext(out var table))
+{
 	var entities   = table.GetEntities();
 	var positions  = table.GetComponentDataReadOnly<Position>();
 	var rotations  = table.GetComponentDataReadOnly<Rotation>();
@@ -94,7 +97,7 @@ manager.ForEach(EntityQuery.universal, (table, manager) => {
 		if(childOfs.Length > 0)
 			Console.WriteLine("\t ChildOf: " + childOfs[i]);
 	}
-});
+}
 
 // Destroy all entities that match the query created above.
 manager.DestroyEntity(query);

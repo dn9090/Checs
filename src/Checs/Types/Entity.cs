@@ -4,10 +4,10 @@ using System.Runtime.InteropServices;
 namespace Checs
 {
 	/// <summary>
-	/// Identifies a set of component data.
+	/// Identifies a unique set of component data.
 	/// </summary>
 	[StructLayout(LayoutKind.Sequential)]
-	public unsafe readonly struct Entity : IEquatable<Entity>, IComparable<Entity>
+	public readonly struct Entity : IEquatable<Entity>, IComparable<Entity>
 	{
 		internal static Type type = typeof(Entity);
 
@@ -15,10 +15,20 @@ namespace Checs
 
 		internal static TypeInfo info = TypeRegistry<Entity>.info;
 
+		/// <summary>
+		/// The id of the entity.
+		/// </summary>
 		public readonly int index;
 
+		/// <summary>
+		/// The version of the entity.
+		/// </summary>
 		public readonly uint version;
 		
+		/// <summary>
+		/// Returns if the entity is the null entity,
+		/// is equivalent to the <c>default<c/> entity.
+		/// </summary>
 		public bool isNull => version == 0;
 
 		internal Entity(int index, uint version)

@@ -104,6 +104,7 @@ namespace Checs.Tests
 			countdownEvent.Wait();
 			countdownEvent.Reset();
 
+			Assert.Equal(0, store.GetFreeCount());
 			Assert.Equal(ChunkCount * ThreadCount, store.GetCount());
 
 			for(int i = 0; i < threads.Length; ++i)
@@ -120,6 +121,7 @@ namespace Checs.Tests
 			for(int i = 0; i < threads.Length; ++i)
 				threads[i].Join();
 
+			Assert.Equal(0, store.GetFreeCount());
 			Assert.Equal(ChunkCount * ThreadCount, store.GetCount());
 
 			store.Dispose();

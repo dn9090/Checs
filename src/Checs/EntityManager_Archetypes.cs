@@ -113,7 +113,7 @@ namespace Checs
 
 			this.lookupTable.Add(hashCode, archetype->index);
 			
-			Archetype.Construct(archetype, hashCodes, sizes, count, chunkCapacity, this.changeVersion);
+			Archetype.Construct(archetype, hashCode, hashCodes, sizes, count, chunkCapacity, this.changeVersion);
 
 			return new EntityArchetype(archetype->index);
 		}

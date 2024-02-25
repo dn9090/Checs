@@ -31,6 +31,10 @@ namespace Checs
 		public void Dispose()
 		{
 			Allocator.Free(this.archetypes);
+			
+			this.archetypes = null;
+			this.capacity   = 0;
+			this.count      = 0;
 		}
 	}
 }

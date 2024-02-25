@@ -205,7 +205,7 @@ Use static methods if possible to avoid triggering the GC.
 
 The third variant is to manually iterate over all tables of an archetype or query with an `EntityIterator` (similar to the second variant):
 ```CSharp
-using var it = manager.GetIterator(query);
+var it = manager.GetIterator(query);
 
 while(it.TryNext(out var table))
 {

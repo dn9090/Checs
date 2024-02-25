@@ -69,7 +69,7 @@ namespace Checs
 				ChunkUtility.ZeroComponentData(batch.chunk, batch.index, batch.count);
 				
 				entities += batch.count;
-				count -= batch.count;
+				count    -= batch.count;
 			}
 		}
 
@@ -179,7 +179,8 @@ namespace Checs
 
 		internal void DestroyEntityInternal(Archetype* archetype)
 		{
-			for(int i = 0; i < archetype->chunkList.count; ++i)
+			// Be careful: the chunklist uses swapback to remove chunks.
+			for(int i = archetype->chunkList.count - 1; i >= 0; --i)
 			{
 				var chunk = archetype->chunkList.chunks[i];
 				DestroyEntityBatch(new EntityBatch(chunk));
@@ -365,12 +366,40 @@ namespace Checs
 		/// </summary>
 		/// <param name="entities">The buffer of entities to move.</param>
 		/// <param name="archetype">The destination archetype.</param>
+		public void MoveEntity(ReadOnlySpan<Entity> entities, EntityArchetype archetype)
+		{
+			var arch = GetArchetypeInternal(archetype);
+			var count = 0;
+
+			while(count < entities.Length)
+			{
+				var batch = GetFirstEntityBatch(entities.Slice(count));
+
+				count += batch.count;
+
+				if(batch.chunk == null || batch.chunk->archetype == arch)
+					continue;
+
+				MoveEntityBatch(batch, arch);
+			}
+		}
+
+		/// <summary>
+		/// Moves all entities in the buffer to specified archetype.
+		/// All successfully moved entities are copied to the specified destination buffer.
+		/// </summary>
+		/// <param name="entities">The buffer of entities to move.</param>
+		/// <param name="movedEntities">The destination buffer.</param>
+		/// <param name="archetype">The destination archetype.</param>
 		/// <returns>
-		/// The number of moved entities. If the number is not equal to the buffer size,
+		/// The number of moved entities. If the number is not equal to the number of entities,
 		/// not all entities existed or already belong to the archetype.
 		/// </returns>
-		public int MoveEntity(ReadOnlySpan<Entity> entities, EntityArchetype archetype)
+		public int MoveEntity(ReadOnlySpan<Entity> entities, Span<Entity> movedEntities, EntityArchetype archetype)
 		{
+			if(entities.Length > movedEntities.Length)
+				throw new ArgumentException(nameof(movedEntities));
+
 			var arch = GetArchetypeInternal(archetype);
 			var count = 0;
 			var moved = 0;
@@ -383,6 +412,11 @@ namespace Checs
 
 				if(batch.chunk == null || batch.chunk->archetype == arch)
 					continue;
+
+				var ptr   = ChunkUtility.GetEntities(batch.chunk, batch.index);
+				var slice = new Span<Entity>(ptr, batch.count);
+
+				slice.CopyTo(movedEntities.Slice(moved));
 
 				moved += batch.count;
 
@@ -468,10 +502,10 @@ namespace Checs
 
 		internal EntityBatch GetLargestFreeEntityBatch(Chunk* chunk, int count)
 		{
-			var free = chunk->capacity - chunk->count;
-			var actualCount = (free <= count) ? free : count;
+			var freeCount = chunk->capacity - chunk->count;
+			var maxCount  = (freeCount <= count) ? freeCount : count;
 
-			return new EntityBatch(chunk, chunk->count, actualCount);
+			return new EntityBatch(chunk, chunk->count, maxCount);
 		}
 
 		internal EntityBatch GetFirstEntityBatch(ReadOnlySpan<Entity> entities)

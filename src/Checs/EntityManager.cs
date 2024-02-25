@@ -6,8 +6,8 @@ using System.Runtime.InteropServices;
 namespace Checs
 {
 	/// <summary>
-	/// The central data structure that manages all entities, archetypes
-	/// and components.
+	/// The central data structure that manages all entities, components,
+	/// archetypes and queries.
 	/// </summary>
 	[StructLayout(LayoutKind.Sequential, Size = 128)]
 	public unsafe partial class EntityManager : IDisposable
