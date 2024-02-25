@@ -31,7 +31,10 @@ namespace Checs
 
 		public void Dispose()
 		{
-			this.archetypeList.Dispose();
+			if(index == 0) // TODO: ~~ This looks like shit. ~~
+				this.archetypeList = default;
+			else
+				this.archetypeList.Dispose();
 		}
 
 		public static void Construct(Query* query, uint* includeHashCodes, int includeCount,

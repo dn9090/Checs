@@ -40,7 +40,7 @@ namespace Checs
 		{
 			for(int i = 0; i < this.count; ++i)
 			{
-				this.queries[i]->Dispose();
+				//this.queries[i]->Dispose();
 				Allocator.AlignedFree(this.queries[i]);
 			}
 

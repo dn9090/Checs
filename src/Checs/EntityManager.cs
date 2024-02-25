@@ -51,7 +51,7 @@ namespace Checs
 			CreateEmptyArchetype();
 			CreateUniversialQuery();
 		}
-
+		
 		~EntityManager()
 		{
 			Dispose();
@@ -59,6 +59,7 @@ namespace Checs
 
 		public void Dispose()
 		{
+			
 			this.entityStore.Dispose();
 			this.archetypeStore.Dispose();
 			this.queryStore.Dispose();
